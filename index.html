@@ -302,7 +302,7 @@
       </div>
 
       <!-- ==================== TAB 3: 核券 (Redeem) ==================== -->
-      <div v-if="activeTab === 'redeem'" class="p-4 space-y-6 pb-24">
+      <div v-if="activeTab === 'redeem'" class="p-4 space-y-5 pb-24">
         <div class="bg-gradient-to-r from-blue-500 to-cyan-400 p-5 rounded-3xl text-white shadow-md relative overflow-hidden">
           <h2 class="text-xl font-bold flex items-center gap-2 relative z-10">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -314,12 +314,95 @@
           <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
         </div>
 
+        <!-- ===== 智能核銷建議 ===== -->
+        <div class="bg-white border border-emerald-100 rounded-3xl p-4 shadow-sm space-y-3">
+          <h3 class="font-bold text-gray-800 flex items-center gap-2 text-sm">
+            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+            智能核銷建議
+          </h3>
+
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+            <input
+              type="number"
+              v-model="suggestSpend"
+              placeholder="輸入今次消費金額，自動計算最優核銷方案"
+              class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 pl-8 pr-4 text-sm font-medium outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition-all"
+            />
+          </div>
+
+          <div v-if="Number(suggestSpend) > 0" class="flex gap-2">
+            <button
+              @click="suggestMode = 'single'"
+              class="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+              :class="suggestMode === 'single' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'"
+            >單一承辦商</button>
+            <button
+              @click="suggestMode = 'split'"
+              class="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+              :class="suggestMode === 'split' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-gray-100 text-gray-600'"
+            >分單模式</button>
+          </div>
+
+          <div v-if="Number(suggestSpend) > 0 && suggestPlan.length === 0" class="text-center py-3">
+            <p class="text-xs text-gray-400">根據 ${{ suggestSpend }} 的消費，暫無可配對的優惠券</p>
+          </div>
+
+          <div v-if="suggestPlan.length > 0" class="space-y-2">
+            <div
+              v-for="(plan, index) in suggestPlan"
+              :key="plan.platform"
+              class="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 space-y-1.5"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span v-if="suggestMode === 'split'" class="bg-emerald-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">{{ index + 1 }}</span>
+                  <span class="font-bold text-sm text-gray-800">{{ plan.platform }}</span>
+                </div>
+                <span class="text-emerald-600 font-bold text-sm">節省 ${{ plan.savingAmount }}</span>
+              </div>
+              <p class="text-[11px] text-gray-500">需消費 <span class="font-bold text-gray-700">${{ plan.requiredSpend }}</span></p>
+              <div class="flex flex-wrap gap-1.5">
+                <span
+                  v-for="c in plan.coupons"
+                  :key="c.id"
+                  class="bg-white border border-emerald-200 text-emerald-700 text-[11px] font-bold px-2 py-0.5 rounded-lg"
+                >${{ c.amount }}</span>
+              </div>
+            </div>
+
+            <div class="bg-gray-50 rounded-2xl p-3 flex items-center justify-between">
+              <div class="text-xs text-gray-600 space-y-0.5">
+                <p>消費分配: <span class="font-bold text-gray-800">${{ totalSuggestUsedSpend }}</span> / ${{ suggestSpend }}</p>
+                <p>合共節省: <span class="font-bold text-emerald-600">${{ totalSuggestSaving }}</span></p>
+              </div>
+              <button
+                @click="handleBatchRedeem"
+                class="bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl active:bg-emerald-600 shadow-sm transition-colors"
+              >確認核銷 {{ suggestPlan.reduce((n, p) => n + p.coupons.length, 0) }} 張</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 分隔線 -->
+        <div class="flex items-center gap-3">
+          <div class="flex-1 border-t border-dashed border-gray-200"></div>
+          <span class="text-[10px] text-gray-400 font-medium">或手動選擇核銷</span>
+          <div class="flex-1 border-t border-dashed border-gray-200"></div>
+        </div>
+
+        <!-- ===== 手動多選核銷 ===== -->
         <div class="space-y-3">
           <div class="flex items-center justify-between px-1">
-            <label class="font-bold text-gray-800 text-sm">1. 選擇你要使用嘅優惠券</label>
-            <button 
+            <label class="font-bold text-gray-800 text-sm">
+              選擇優惠券
+              <span v-if="selectedCouponIds.length > 0" class="ml-1 text-blue-500">(已選 {{ selectedCouponIds.length }} 張)</span>
+            </label>
+            <button
               v-if="activeCoupons.length > 0"
-              @click="toggleSortOrder" 
+              @click="toggleSortOrder"
               class="text-xs text-gray-600 flex items-center gap-1 bg-white border border-gray-200 px-2 py-1 rounded-lg shadow-sm active:bg-gray-50 transition-colors"
             >
               <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -333,75 +416,88 @@
             無可用嘅優惠券
           </div>
 
-          <div v-else class="max-h-72 overflow-y-auto p-1 space-y-4">
+          <div v-else class="space-y-4">
             <div v-for="info in sortedPlatformsGrouped" :key="info.platform">
-              <h4 class="text-xs font-bold text-gray-500 mb-2 pl-1">{{ info.platform }} (總值 ${{ info.totalAmount }})</h4>
+              <div class="flex items-center justify-between mb-2 px-1">
+                <h4 class="text-xs font-bold text-gray-500">{{ info.platform }}</h4>
+                <span class="text-[10px] text-gray-400">總值 ${{ info.totalAmount }}</span>
+              </div>
               <div class="grid gap-2">
                 <button
                   v-for="coupon in info.coupons"
                   :key="coupon.id"
-                  @click="selectedCouponId = coupon.id"
+                  @click="toggleCouponSelection(coupon.id)"
                   class="flex items-center p-3 rounded-2xl border text-left transition-all"
-                  :class="selectedCouponId === coupon.id ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 shadow-sm' : 'bg-white border-gray-200 hover:bg-gray-50'"
+                  :class="selectedCouponIds.includes(coupon.id) ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 shadow-sm' : 'bg-white border-gray-200 hover:bg-gray-50'"
                 >
-                  <div class="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shrink-0" :class="selectedCouponId === coupon.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'">
+                  <div class="w-11 h-11 rounded-xl flex items-center justify-center font-bold text-base shrink-0"
+                       :class="selectedCouponIds.includes(coupon.id) ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'">
                     ${{ coupon.amount }}
                   </div>
-                  <div class="ml-4 flex-1">
-                    <p class="font-bold text-sm" :class="selectedCouponId === coupon.id ? 'text-blue-800' : 'text-gray-800'">
+                  <div class="ml-3 flex-1">
+                    <p class="font-bold text-sm" :class="selectedCouponIds.includes(coupon.id) ? 'text-blue-800' : 'text-gray-800'">
                       {{ coupon.platform }}
                     </p>
-                    <p class="text-xs font-bold mt-0.5" :class="selectedCouponId === coupon.id ? 'text-blue-600' : 'text-pink-600'">
+                    <p class="text-xs font-bold mt-0.5" :class="selectedCouponIds.includes(coupon.id) ? 'text-blue-600' : 'text-pink-600'">
                       滿 ${{ coupon.amount * 3 }} 元可使用
                     </p>
-                    <p class="text-[10px] text-gray-500 mt-1">到期: {{ formatDate(coupon.expiryDate) }}</p>
+                    <p class="text-[10px] text-gray-500 mt-0.5">到期: {{ formatDate(coupon.expiryDate) }}</p>
                   </div>
-                  <svg v-if="selectedCouponId === coupon.id" class="text-blue-500 w-6 h-6 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
+                  <div class="w-6 h-6 shrink-0 rounded-full border-2 flex items-center justify-center transition-all"
+                       :class="selectedCouponIds.includes(coupon.id) ? 'bg-blue-500 border-blue-500' : 'border-gray-300'">
+                    <svg v-if="selectedCouponIds.includes(coupon.id)" class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                    </svg>
+                  </div>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div v-if="selectedCoupon" class="space-y-3 animate-in fade-in slide-in-from-bottom-2">
-          <label class="font-bold text-gray-800 text-sm px-1">2. 輸入今次消費金額 (MOP)</label>
+        <!-- 已選摘要 + 消費金額 -->
+        <div v-if="selectedCouponIds.length > 0" class="space-y-3 bg-blue-50 border border-blue-100 rounded-2xl p-4">
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-blue-800">已選 {{ selectedCouponIds.length }} 張優惠券</span>
+            <button @click="selectedCouponIds = []" class="text-[10px] text-gray-400 underline">清除選擇</button>
+          </div>
+          <p class="text-xs text-blue-700">需消費: <span class="font-bold">${{ totalSelectedRequired }}</span>（消費金額選填）</p>
+
           <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
-            <input 
-              type="number" 
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
+            <input
+              type="number"
               v-model="spendAmount"
-              :placeholder="'最少需消費 $' + (selectedCoupon.amount * 3)"
-              class="w-full bg-white border border-gray-300 rounded-2xl py-4 pl-8 pr-4 text-lg font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+              placeholder="輸入消費金額（選填）"
+              class="w-full bg-white border border-blue-200 rounded-xl py-3 pl-8 pr-4 text-base font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
             />
           </div>
-          
-          <p v-if="spendAmount && !isEligible" class="text-red-500 text-sm flex items-center gap-1 px-1">
-            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+
+          <p v-if="spendAmount && !isEligible" class="text-red-500 text-xs flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            金額未達標！使用 ${{ selectedCoupon.amount }} 券需消費滿 ${{ selectedCoupon.amount * 3 }}。
+            金額不足！所選優惠券共需消費滿 ${{ totalSelectedRequired }}
           </p>
-          <p v-else-if="spendAmount && isEligible" class="text-green-600 text-sm flex items-center gap-1 px-1">
-            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <p v-else-if="spendAmount && isEligible" class="text-green-600 text-xs flex items-center gap-1">
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
-            金額達標！可成功使用此優惠券。
+            金額達標！
           </p>
         </div>
 
         <p v-if="redeemErrorMsg" class="text-red-500 text-sm text-center font-bold bg-red-50 py-2 rounded-xl">
           {{ redeemErrorMsg }}
         </p>
-        
-        <button 
+
+        <button
           @click="handlePreRedeem"
-          :disabled="!selectedCoupon || !isEligible"
+          :disabled="selectedCouponIds.length === 0 || (spendAmount && !isEligible)"
           class="w-full font-bold text-lg py-4 rounded-2xl shadow-lg transition-all"
-          :class="selectedCoupon && isEligible ? 'bg-blue-600 text-white active:scale-[0.98]' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+          :class="selectedCouponIds.length > 0 && (!spendAmount || isEligible) ? 'bg-blue-600 text-white active:scale-[0.98]' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
         >
-          確認核銷
+          確認核銷{{ selectedCouponIds.length > 1 ? ' ' + selectedCouponIds.length + ' 張' : '' }}
         </button>
       </div>
 
@@ -721,9 +817,14 @@
         const errorMsg = ref('');
         const showSettings = ref(false);
 
-        const selectedCouponId = ref('');
+        const selectedCouponIds = ref([]);
         const spendAmount = ref('');
         const redeemErrorMsg = ref('');
+
+        // 智能建議狀態
+        const suggestSpend = ref('');
+        const suggestMode = ref('single');
+        const suggestPlan = ref([]);
 
         // 載入 localStorage 資料 (高度防禦性解析)
         const coupons = ref([]);
@@ -854,11 +955,16 @@
           return activePlatforms.value.filter(p => !used.has(p));
         });
 
-        const selectedCoupon = computed(() => activeCoupons.value.find(c => c.id === selectedCouponId.value));
+        const selectedCoupons = computed(() => activeCoupons.value.filter(c => selectedCouponIds.value.includes(c.id)));
+        const totalSelectedRequired = computed(() => selectedCoupons.value.reduce((sum, c) => sum + c.amount * 3, 0));
         const isEligible = computed(() => {
-          const req = selectedCoupon.value ? selectedCoupon.value.amount * 3 : 0;
-          return spendAmount.value && Number(spendAmount.value) >= req;
+          if (selectedCouponIds.value.length === 0) return false;
+          if (!spendAmount.value) return true;
+          return Number(spendAmount.value) >= totalSelectedRequired.value;
         });
+
+        const totalSuggestSaving = computed(() => suggestPlan.value.reduce((sum, p) => sum + p.savingAmount, 0));
+        const totalSuggestUsedSpend = computed(() => suggestPlan.value.reduce((sum, p) => sum + p.requiredSpend, 0));
 
         // 方法及操作
         const toggleSortOrder = () => {
@@ -950,19 +1056,37 @@
           }
         };
 
+        const toggleCouponSelection = (id) => {
+          const idx = selectedCouponIds.value.indexOf(id);
+          if (idx >= 0) {
+            selectedCouponIds.value = selectedCouponIds.value.filter(i => i !== id);
+          } else {
+            selectedCouponIds.value = [...selectedCouponIds.value, id];
+          }
+        };
+
         const goToRedeem = (couponId) => {
-          selectedCouponId.value = couponId;
+          selectedCouponIds.value = [couponId];
           activeTab.value = 'redeem';
         };
 
         const handlePreRedeem = () => {
-          if (!selectedCoupon.value) return redeemErrorMsg.value = '請選擇要核銷嘅優惠券！';
-          if (!isEligible.value) return redeemErrorMsg.value = `消費金額不足！使用 $${selectedCoupon.value.amount} 券需消費滿 $${selectedCoupon.value.amount * 3}。`;
+          if (selectedCouponIds.value.length === 0) return redeemErrorMsg.value = '請選擇要核銷嘅優惠券！';
+          if (spendAmount.value && !isEligible.value) return redeemErrorMsg.value = `消費金額不足！所選優惠券共需消費滿 $${totalSelectedRequired.value}。`;
           redeemErrorMsg.value = '';
 
+          const grouped = {};
+          selectedCoupons.value.forEach(c => {
+            if (!grouped[c.platform]) grouped[c.platform] = [];
+            grouped[c.platform].push(c);
+          });
+          const platformSummary = Object.entries(grouped)
+            .map(([p, cs]) => `${p}: ${cs.map(c => `$${c.amount}`).join('+')}`)
+            .join('\n');
+
           confirmDialog.value = {
-            title: '確認核銷此優惠券？',
-            content: `承辦機構：${selectedCoupon.value.platform}\n面額：$${selectedCoupon.value.amount} 優惠券\n總消費金額：$${spendAmount.value}\n\n請確認已成功付款並核銷。`,
+            title: `確認核銷 ${selectedCouponIds.value.length} 張優惠券？`,
+            content: `${platformSummary}${spendAmount.value ? '\n\n消費金額：$' + spendAmount.value : ''}\n\n請確認已成功付款並核銷。`,
             isDestructive: false,
             onConfirm: () => {
               handleRedeem();
@@ -972,15 +1096,94 @@
         };
 
         const handleRedeem = () => {
-          coupons.value = coupons.value.map(c => 
-            c.id === selectedCouponId.value ? { ...c, status: 'used', usedDate: new Date().toISOString() } : c
+          const ids = selectedCouponIds.value;
+          const now = new Date().toISOString();
+          coupons.value = coupons.value.map(c =>
+            ids.includes(c.id) ? { ...c, status: 'used', usedDate: now } : c
           );
 
-          addLog('redeem', `核銷 $${selectedCoupon.value.amount} 券 (${selectedCoupon.value.platform}) - 總消費 $${spendAmount.value}`);
-          
-          selectedCouponId.value = '';
+          const grouped = {};
+          selectedCoupons.value.forEach(c => {
+            if (!grouped[c.platform]) grouped[c.platform] = [];
+            grouped[c.platform].push(c);
+          });
+          Object.entries(grouped).forEach(([p, cs]) => {
+            addLog('redeem', `核銷 ${cs.map(c => `$${c.amount}`).join('+')} 券 (${p})${spendAmount.value ? ' - 消費 $' + spendAmount.value : ''}`);
+          });
+
+          selectedCouponIds.value = [];
           spendAmount.value = '';
           activeTab.value = 'home';
+        };
+
+        // 智能建議計算
+        const computeSuggestPlan = () => {
+          const S = Number(suggestSpend.value);
+          if (!S || S <= 0 || activeCoupons.value.length === 0) {
+            suggestPlan.value = [];
+            return;
+          }
+          const platforms = sortedPlatformsGrouped.value;
+
+          if (suggestMode.value === 'single') {
+            let best = null;
+            let bestSaving = 0;
+            for (const pf of platforms) {
+              let rem = S;
+              const sel = [];
+              for (const c of pf.coupons) {
+                const req = c.amount * 3;
+                if (rem >= req) { rem -= req; sel.push(c); }
+              }
+              const saving = sel.reduce((s, c) => s + c.amount, 0);
+              if (saving > bestSaving) {
+                bestSaving = saving;
+                best = [{ platform: pf.platform, coupons: sel, requiredSpend: sel.reduce((s, c) => s + c.amount * 3, 0), savingAmount: saving }];
+              }
+            }
+            suggestPlan.value = best || [];
+          } else {
+            let rem = S;
+            const plan = [];
+            for (const pf of platforms) {
+              if (rem <= 0) break;
+              const sel = [];
+              for (const c of pf.coupons) {
+                const req = c.amount * 3;
+                if (rem >= req) { rem -= req; sel.push(c); }
+              }
+              if (sel.length > 0) {
+                plan.push({ platform: pf.platform, coupons: sel, requiredSpend: sel.reduce((s, c) => s + c.amount * 3, 0), savingAmount: sel.reduce((s, c) => s + c.amount, 0) });
+              }
+            }
+            suggestPlan.value = plan;
+          }
+        };
+
+        watch([suggestSpend, suggestMode], computeSuggestPlan);
+
+        const handleBatchRedeem = () => {
+          if (!suggestPlan.value.length) return;
+          const allIds = suggestPlan.value.flatMap(p => p.coupons.map(c => c.id));
+          const planDesc = suggestPlan.value.map((p, i) =>
+            `${suggestMode.value === 'split' ? (i + 1) + '. ' : ''}${p.platform}：消費 $${p.requiredSpend}，核銷 ${p.coupons.map(c => `$${c.amount}`).join('+')}（節省 $${p.savingAmount}）`
+          ).join('\n');
+          confirmDialog.value = {
+            title: '確認批量核銷？',
+            content: `${planDesc}\n\n合共節省：$${totalSuggestSaving.value}`,
+            isDestructive: false,
+            onConfirm: () => {
+              const now = new Date().toISOString();
+              coupons.value = coupons.value.map(c => allIds.includes(c.id) ? { ...c, status: 'used', usedDate: now } : c);
+              suggestPlan.value.forEach(p => {
+                addLog('redeem', `智能核銷(${suggestMode.value === 'split' ? '分單' : '單一'}) ${p.platform}: 消費 $${p.requiredSpend}，核銷 ${p.coupons.map(c => `$${c.amount}`).join('+')} 節省 $${p.savingAmount}`);
+              });
+              suggestPlan.value = [];
+              suggestSpend.value = '';
+              confirmDialog.value = null;
+              activeTab.value = 'home';
+            }
+          };
         };
 
         // 自動過期及計時器提醒
@@ -1135,9 +1338,12 @@
           noWinCount,
           errorMsg,
           showSettings,
-          selectedCouponId,
+          selectedCouponIds,
           spendAmount,
           redeemErrorMsg,
+          suggestSpend,
+          suggestMode,
+          suggestPlan,
           ALL_PLATFORMS,
           DENOMINATIONS,
           activePlatforms,
@@ -1148,15 +1354,20 @@
           expiringSoonCount,
           earliestExpiryDate,
           unusedPlatforms,
-          selectedCoupon,
+          selectedCoupons,
+          totalSelectedRequired,
           isEligible,
+          totalSuggestSaving,
+          totalSuggestUsedSpend,
           toggleSortOrder,
           togglePlatform,
+          toggleCouponSelection,
           handleAdd,
           handleSub,
           handlePreSave,
           goToRedeem,
           handlePreRedeem,
+          handleBatchRedeem,
           dismissUrgentAlert,
           handleExportData,
           handleImportData,
