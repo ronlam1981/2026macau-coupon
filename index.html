@@ -1155,27 +1155,29 @@
             }
             suggestPlan.value = best || [];
           } else {
-            // Sort platforms DESC by totalRequired as baseline
+            // Sort platforms DESC by total required spend (largest platform first)
             pfGroups.sort((a, b) => b.totalRequired - a.totalRequired);
-            const totalRequired = pfGroups.reduce((s, pf) => s + pf.totalRequired, 0);
-            // If budget covers all coupons, sort smallest first so largest platform can be used in one go
-            const orderedGroups = S >= totalRequired
-              ? [...pfGroups].reverse()
-              : pfGroups;
-
+            // Flatten: platform1 coupons (largest first), platform2 coupons (largest first), ...
+            // Greedy scan: pick each coupon if budget allows, skip if not — never block on a single coupon
+            const allCoupons = pfGroups.flatMap(pf => pf.coupons.map(c => ({ ...c })));
             let rem = S;
-            const plan = [];
-            for (const pf of orderedGroups) {
+            const selectedByPlatform = {};
+            for (const c of allCoupons) {
               if (rem <= 0) break;
-              const sel = [];
-              for (const c of pf.coupons) {
-                const req = c.amount * 3;
-                if (rem >= req) { rem -= req; sel.push(c); }
-              }
-              if (sel.length > 0) {
-                plan.push({ platform: pf.platform, coupons: sel, requiredSpend: sel.reduce((s, c) => s + c.amount * 3, 0), savingAmount: sel.reduce((s, c) => s + c.amount, 0) });
+              const req = c.amount * 3;
+              if (rem >= req) {
+                rem -= req;
+                if (!selectedByPlatform[c.platform]) selectedByPlatform[c.platform] = [];
+                selectedByPlatform[c.platform].push(c);
               }
             }
+            // Output plan in platform order (largest platform first)
+            const plan = pfGroups
+              .filter(pf => selectedByPlatform[pf.platform])
+              .map(pf => {
+                const coupons = selectedByPlatform[pf.platform];
+                return { platform: pf.platform, coupons, requiredSpend: coupons.reduce((s, c) => s + c.amount * 3, 0), savingAmount: coupons.reduce((s, c) => s + c.amount, 0) };
+              });
             suggestPlan.value = plan;
           }
         };
