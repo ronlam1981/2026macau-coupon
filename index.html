@@ -1123,12 +1123,24 @@
             suggestPlan.value = [];
             return;
           }
-          const platforms = sortedPlatformsGrouped.value;
+
+          // Build platform groups independent of user sort order
+          const groupMap = {};
+          for (const c of activeCoupons.value) {
+            if (!groupMap[c.platform]) groupMap[c.platform] = [];
+            groupMap[c.platform].push(c);
+          }
+          // Sort coupons within each platform DESC by amount (greedy)
+          const pfGroups = Object.entries(groupMap).map(([platform, coupons]) => {
+            const sorted = [...coupons].sort((a, b) => b.amount - a.amount);
+            const totalRequired = sorted.reduce((s, c) => s + c.amount * 3, 0);
+            return { platform, coupons: sorted, totalRequired };
+          });
 
           if (suggestMode.value === 'single') {
             let best = null;
             let bestSaving = 0;
-            for (const pf of platforms) {
+            for (const pf of pfGroups) {
               let rem = S;
               const sel = [];
               for (const c of pf.coupons) {
@@ -1143,9 +1155,17 @@
             }
             suggestPlan.value = best || [];
           } else {
+            // Sort platforms DESC by totalRequired as baseline
+            pfGroups.sort((a, b) => b.totalRequired - a.totalRequired);
+            const totalRequired = pfGroups.reduce((s, pf) => s + pf.totalRequired, 0);
+            // If budget covers all coupons, sort smallest first so largest platform can be used in one go
+            const orderedGroups = S >= totalRequired
+              ? [...pfGroups].reverse()
+              : pfGroups;
+
             let rem = S;
             const plan = [];
-            for (const pf of platforms) {
+            for (const pf of orderedGroups) {
               if (rem <= 0) break;
               const sel = [];
               for (const c of pf.coupons) {
