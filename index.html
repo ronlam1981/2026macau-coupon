@@ -1,0 +1,1170 @@
+
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>2026 社區消費大獎賞小幫手</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Vue 3 CDN (cdnjs 高穩定版本) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
+  <style>
+    .pb-safe {
+      padding-bottom: env(safe-area-inset-bottom, 16px);
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+  <div id="app" class="min-h-screen bg-slate-50 font-sans max-w-md mx-auto relative overflow-hidden flex flex-col shadow-2xl pb-16">
+    
+    <!-- 全局頂部欄 -->
+    <header class="bg-white px-5 pt-10 pb-4 shadow-sm sticky top-0 z-10 flex flex-col gap-2">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-xl font-extrabold bg-gradient-to-r from-blue-600 to-pink-500 bg-clip-text text-transparent">
+            社區消費大獎賞
+          </h1>
+          <p class="text-xs text-gray-500 font-medium mt-0.5 flex items-center gap-1">
+            <!-- 日曆圖示 -->
+            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            {{ todayString }}
+          </p>
+        </div>
+        <div class="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span>
+          進行中
+        </div>
+      </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="flex-1 overflow-y-auto">
+      
+      <!-- ==================== TAB 1: 主頁 (Home) ==================== -->
+      <div v-if="activeTab === 'home'" class="p-4 space-y-6">
+        <!-- 優惠券即將到期溫馨提示 -->
+        <div v-if="expiringSoonCount > 0" class="bg-red-50 border border-red-200 p-4 rounded-2xl flex items-start gap-3 shadow-sm">
+          <svg class="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <div>
+            <h3 class="font-bold text-red-800">溫馨提示：優惠券即將到期！</h3>
+            <p class="text-sm text-red-600 mt-1">
+              你有 <span class="font-bold">{{ expiringSoonCount }}</span> 張優惠券即將喺 <span class="font-bold underline">{{ earliestExpiryDate }}</span> 到期，記得趁「週一至週四」去核銷啦！
+            </p>
+          </div>
+        </div>
+
+        <!-- 數據卡片 -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-gradient-to-br from-blue-500 to-cyan-400 p-5 rounded-3xl text-white shadow-md">
+            <p class="text-blue-100 text-sm font-medium mb-1">可用優惠券總值</p>
+            <div class="flex items-baseline gap-1 mt-1">
+              <span class="text-xs font-semibold">MOP</span>
+              <span class="text-3xl font-bold">{{ totalValue }}</span>
+            </div>
+          </div>
+          <div class="bg-white border border-gray-100 p-5 rounded-3xl shadow-sm flex flex-col justify-center">
+            <p class="text-gray-500 text-sm font-medium">優惠券數量</p>
+            <div class="flex items-baseline gap-1 mt-1">
+              <span class="text-3xl font-bold text-gray-800">{{ activeCoupons.length }}</span>
+              <span class="text-gray-500 text-xs font-medium">張喺手</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 持有優惠券列表與排序 -->
+        <div>
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+              <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+              </svg>
+              目前持有嘅優惠券
+            </h3>
+            <button 
+              v-if="activeCoupons.length > 0"
+              @click="toggleSortOrder" 
+              class="text-xs text-gray-600 flex items-center gap-1 bg-white border border-gray-200 px-2.5 py-1.5 rounded-lg shadow-sm active:bg-gray-50 transition-colors"
+            >
+              <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+              {{ sortOrder === 'desc' ? '面額：大至細' : '面額：細至大' }}
+            </button>
+          </div>
+          
+          <div v-if="activeCoupons.length === 0" class="bg-gray-50 rounded-2xl p-8 text-center border border-dashed border-gray-200">
+            <svg class="w-12 h-12 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+            </svg>
+            <p class="text-gray-500">目前未有可用嘅優惠券</p>
+            <button @click="setActiveTab('draw')" class="mt-4 text-blue-500 font-bold text-sm">去記錄抽券 &rarr;</button>
+          </div>
+
+          <div v-else class="space-y-6">
+            <div v-for="info in sortedPlatformsGrouped" :key="info.platform" class="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm">
+              <!-- 承辦商組別頭部 -->
+              <div class="border-b border-gray-100 pb-3 mb-3">
+                <h4 class="text-base font-bold text-gray-800 flex items-center gap-2 mb-1">
+                  <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                  {{ info.platform }}
+                  <span class="ml-auto text-xs font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                    共 {{ info.coupons.length }} 張
+                  </span>
+                </h4>
+                <p class="text-xs font-bold text-indigo-600 bg-indigo-50 inline-block px-2 py-1 rounded-lg">
+                  一次過用晒需消費滿 MOP {{ info.totalRequiredSpend }} (總值 ${{ info.totalAmount }})
+                </p>
+              </div>
+              
+              <!-- 優惠券子列表 -->
+              <div class="space-y-2">
+                <div v-for="coupon in info.coupons" :key="coupon.id" class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
+                  <div class="flex items-center gap-3">
+                    <div class="bg-pink-50 text-pink-600 font-bold text-lg w-12 h-12 rounded-xl flex items-center justify-center shrink-0">
+                      ${{ coupon.amount }}
+                    </div>
+                    <div>
+                      <p class="text-xs text-blue-600 font-bold mb-0.5">滿 ${{ coupon.amount * 3 }} 元可用</p>
+                      <p class="text-[10px] text-gray-500 flex items-center gap-1">
+                        <svg class="w-3 h-3 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        到期: {{ formatDate(coupon.expiryDate) }}
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    @click="goToRedeem(coupon.id)"
+                    class="text-blue-500 px-3 py-1.5 rounded-full text-xs font-bold border border-blue-100 hover:bg-blue-50 active:bg-blue-100 whitespace-nowrap transition-colors"
+                  >
+                    核銷
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TAB 2: 抽券 (Draw) ==================== -->
+      <div v-if="activeTab === 'draw'" class="p-4 space-y-6 pb-24">
+        
+        <!-- ⚙️ 管理平台介面 -->
+        <div v-if="showSettings" class="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
+          <div class="flex items-center gap-3 mb-6 border-b pb-4">
+            <button @click="showSettings = false" class="bg-gray-100 p-2 rounded-full text-gray-600">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+              </svg>
+            </button>
+            <h2 class="text-xl font-bold text-gray-800">管理支付平台</h2>
+          </div>
+          <p class="text-sm text-gray-600 mb-4">隱藏你沒有使用或者唔打算參與活動嘅支付平台，令介面更加簡潔。</p>
+          
+          <div class="space-y-3">
+            <div v-for="platform in ALL_PLATFORMS" :key="platform" class="flex items-center justify-between p-4 rounded-2xl border transition-colors" :class="hiddenPlatforms.includes(platform) ? 'bg-gray-50 border-gray-200' : 'bg-white border-blue-100 shadow-sm'">
+              <span class="font-bold text-sm" :class="hiddenPlatforms.includes(platform) ? 'text-gray-400 line-through' : 'text-gray-800'">{{ platform }}</span>
+              <button 
+                @click="togglePlatform(platform)"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-colors"
+                :class="hiddenPlatforms.includes(platform) ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'"
+              >
+                {{ hiddenPlatforms.includes(platform) ? '顯示' : '隱藏' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 正常抽券填寫介面 -->
+        <div v-else class="space-y-6">
+          <div class="bg-gradient-to-r from-pink-500 to-rose-400 p-5 rounded-3xl text-white shadow-md relative overflow-hidden">
+            <h2 class="text-xl font-bold flex items-center gap-2 relative z-10">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+              </svg>
+              週末抽券記錄
+            </h2>
+            <p class="text-pink-100 text-sm mt-2 opacity-90 relative z-10">每逢週五至週日，消費每滿 $50 即可抽券。</p>
+            <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+          </div>
+
+          <!-- 未使用平台提醒名單 -->
+          <div v-if="unusedPlatforms.length > 0 && unusedPlatforms.length < activePlatforms.length" class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm">
+            <h3 class="text-sm font-bold text-indigo-800 flex items-center gap-2 mb-2">
+              <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              仲有 {{ unusedPlatforms.length }} 間承辦商未有優惠券：
+            </h3>
+            <div class="flex flex-wrap gap-1.5">
+              <span v-for="p in unusedPlatforms" :key="p" class="text-[10px] bg-white border border-indigo-200 text-indigo-600 px-2 py-1 rounded-md font-medium shadow-sm">
+                {{ p }}
+              </span>
+            </div>
+          </div>
+
+          <!-- 步驟一：選擇承辦商 -->
+          <div class="space-y-3">
+            <div class="flex items-center justify-between px-1">
+              <label class="font-bold text-gray-800 text-sm">1. 選擇承辦單位 (支付機構)</label>
+              <button 
+                @click="showSettings = true"
+                class="text-xs text-gray-500 flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-lg hover:bg-gray-200"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+                管理平台
+              </button>
+            </div>
+            
+            <div v-if="activePlatforms.length === 0" class="p-6 bg-gray-50 rounded-2xl text-center border border-dashed border-gray-300">
+              <p class="text-gray-500 text-sm mb-3">你已隱藏所有支付平台。</p>
+              <button @click="showSettings = true" class="text-blue-500 font-bold text-sm">點擊重新設定</button>
+            </div>
+
+            <div v-else class="grid grid-cols-2 gap-3">
+              <button
+                v-for="p in activePlatforms"
+                :key="p"
+                @click="selectedPlatform = p"
+                class="p-3 rounded-xl border text-sm font-medium transition-all"
+                :class="selectedPlatform === p ? 'bg-pink-50 border-pink-500 text-pink-700 shadow-sm ring-1 ring-pink-500' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'"
+              >
+                {{ p }}
+              </button>
+            </div>
+          </div>
+
+          <!-- 步驟二：記錄面額 -->
+          <div class="space-y-3">
+            <label class="font-bold text-gray-800 text-sm px-1">
+              2. 記錄抽中面額 (共 {{ totalDrawSelectedCount }} 張)
+            </label>
+            <div class="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+              <div v-for="amount in DENOMINATIONS" :key="amount" class="flex items-center justify-between p-3 border-b border-gray-50 last:border-0">
+                <div class="flex items-center gap-3">
+                  <div class="bg-pink-100 text-pink-700 font-bold w-12 h-12 rounded-xl flex items-center justify-center shrink-0">
+                    ${{ amount }}
+                  </div>
+                  <div>
+                    <span class="text-gray-700 font-medium block text-sm">電子優惠券</span>
+                    <span class="text-[10px] text-pink-600 font-bold">滿 ${{ amount * 3 }} 元可使用</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4">
+                  <button @click="handleSub(amount)" class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 active:bg-gray-200 transition-colors font-bold">-</button>
+                  <span class="w-5 text-center font-bold text-lg">{{ drawCounts[amount] }}</span>
+                  <button @click="handleAdd(amount)" class="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-white active:bg-pink-600 shadow-sm transition-colors font-bold">+</button>
+                </div>
+              </div>
+              
+              <!-- 謝謝參與 / 未有中獎選項 -->
+              <div class="flex items-center justify-between p-3 bg-gray-50 border-t-2 border-dashed border-gray-200">
+                <div class="flex items-center gap-3">
+                  <div class="bg-gray-200 text-gray-500 font-bold w-12 h-12 rounded-xl flex items-center justify-center shrink-0">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  </div>
+                  <div>
+                    <span class="text-gray-700 font-bold block text-sm">未有中獎</span>
+                    <span class="text-[10px] text-gray-500">真可惜，謝謝參與</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4">
+                  <button @click="noWinCount = Math.max(0, noWinCount - 1)" class="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors font-bold">-</button>
+                  <span class="w-5 text-center font-bold text-lg text-gray-600">{{ noWinCount }}</span>
+                  <button @click="noWinCount++" class="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-white active:bg-gray-700 shadow-sm transition-colors font-bold">+</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p v-if="errorMsg" class="text-red-500 text-sm text-center font-bold bg-red-50 py-2 rounded-xl border border-red-100">
+            {{ errorMsg }}
+          </p>
+          <button 
+            @click="handlePreSave"
+            :disabled="activePlatforms.length === 0"
+            class="w-full bg-gray-900 text-white font-bold text-lg py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-transform disabled:bg-gray-300 disabled:shadow-none"
+          >
+            保存記錄
+          </button>
+        </div>
+      </div>
+
+      <!-- ==================== TAB 3: 核券 (Redeem) ==================== -->
+      <div v-if="activeTab === 'redeem'" class="p-4 space-y-6 pb-24">
+        <div class="bg-gradient-to-r from-blue-500 to-cyan-400 p-5 rounded-3xl text-white shadow-md relative overflow-hidden">
+          <h2 class="text-xl font-bold flex items-center gap-2 relative z-10">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+            </svg>
+            平日核券記錄
+          </h2>
+          <p class="text-blue-100 text-sm mt-2 opacity-90 relative z-10">週一至週四使用，每消費 $30 可用一張 $10 券 (即 3 倍核銷)。</p>
+          <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+        </div>
+
+        <div class="space-y-3">
+          <div class="flex items-center justify-between px-1">
+            <label class="font-bold text-gray-800 text-sm">1. 選擇你要使用嘅優惠券</label>
+            <button 
+              v-if="activeCoupons.length > 0"
+              @click="toggleSortOrder" 
+              class="text-xs text-gray-600 flex items-center gap-1 bg-white border border-gray-200 px-2 py-1 rounded-lg shadow-sm active:bg-gray-50 transition-colors"
+            >
+              <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+              </svg>
+              {{ sortOrder === 'desc' ? '大至細' : '細至大' }}
+            </button>
+          </div>
+
+          <div v-if="activeCoupons.length === 0" class="bg-gray-50 rounded-2xl p-6 text-center text-gray-500 border border-gray-200">
+            無可用嘅優惠券
+          </div>
+
+          <div v-else class="max-h-72 overflow-y-auto p-1 space-y-4">
+            <div v-for="info in sortedPlatformsGrouped" :key="info.platform">
+              <h4 class="text-xs font-bold text-gray-500 mb-2 pl-1">{{ info.platform }} (總值 ${{ info.totalAmount }})</h4>
+              <div class="grid gap-2">
+                <button
+                  v-for="coupon in info.coupons"
+                  :key="coupon.id"
+                  @click="selectedCouponId = coupon.id"
+                  class="flex items-center p-3 rounded-2xl border text-left transition-all"
+                  :class="selectedCouponId === coupon.id ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500 shadow-sm' : 'bg-white border-gray-200 hover:bg-gray-50'"
+                >
+                  <div class="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg shrink-0" :class="selectedCouponId === coupon.id ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'">
+                    ${{ coupon.amount }}
+                  </div>
+                  <div class="ml-4 flex-1">
+                    <p class="font-bold text-sm" :class="selectedCouponId === coupon.id ? 'text-blue-800' : 'text-gray-800'">
+                      {{ coupon.platform }}
+                    </p>
+                    <p class="text-xs font-bold mt-0.5" :class="selectedCouponId === coupon.id ? 'text-blue-600' : 'text-pink-600'">
+                      滿 ${{ coupon.amount * 3 }} 元可使用
+                    </p>
+                    <p class="text-[10px] text-gray-500 mt-1">到期: {{ formatDate(coupon.expiryDate) }}</p>
+                  </div>
+                  <svg v-if="selectedCouponId === coupon.id" class="text-blue-500 w-6 h-6 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="selectedCoupon" class="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+          <label class="font-bold text-gray-800 text-sm px-1">2. 輸入今次消費金額 (MOP)</label>
+          <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-bold">$</span>
+            <input 
+              type="number" 
+              v-model="spendAmount"
+              :placeholder="'最少需消費 $' + (selectedCoupon.amount * 3)"
+              class="w-full bg-white border border-gray-300 rounded-2xl py-4 pl-8 pr-4 text-lg font-bold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+            />
+          </div>
+          
+          <p v-if="spendAmount && !isEligible" class="text-red-500 text-sm flex items-center gap-1 px-1">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            金額未達標！使用 ${{ selectedCoupon.amount }} 券需消費滿 ${{ selectedCoupon.amount * 3 }}。
+          </p>
+          <p v-else-if="spendAmount && isEligible" class="text-green-600 text-sm flex items-center gap-1 px-1">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            金額達標！可成功使用此優惠券。
+          </p>
+        </div>
+
+        <p v-if="redeemErrorMsg" class="text-red-500 text-sm text-center font-bold bg-red-50 py-2 rounded-xl">
+          {{ redeemErrorMsg }}
+        </p>
+        
+        <button 
+          @click="handlePreRedeem"
+          :disabled="!selectedCoupon || !isEligible"
+          class="w-full font-bold text-lg py-4 rounded-2xl shadow-lg transition-all"
+          :class="selectedCoupon && isEligible ? 'bg-blue-600 text-white active:scale-[0.98]' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+        >
+          確認核銷
+        </button>
+      </div>
+
+      <!-- ==================== TAB 4: 記錄 (History) ==================== -->
+      <div v-if="activeTab === 'history'" class="p-4 space-y-4 pb-24">
+        <!-- 資料備份與還原 -->
+        <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between gap-2 mb-6">
+          <button 
+            @click="handleExportData"
+            class="flex-1 flex flex-col items-center justify-center gap-1 py-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            <span class="text-[10px] font-bold">匯出記錄</span>
+          </button>
+          
+          <label class="flex-1 flex flex-col items-center justify-center gap-1 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+            </svg>
+            <span class="text-[10px] font-bold">匯入記錄</span>
+            <input type="file" class="hidden" accept=".json" @change="handleImportData" />
+          </label>
+
+          <button 
+            @click="clearAllData"
+            :disabled="logs.length === 0 && coupons.length === 0"
+            class="flex-1 flex flex-col items-center justify-center gap-1 py-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 disabled:opacity-50 transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+            </svg>
+            <span class="text-[10px] font-bold">清除資料</span>
+          </button>
+        </div>
+
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <svg class="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            操作歷史
+          </h2>
+        </div>
+        
+        <div v-if="logs.length === 0" class="text-center text-gray-500 mt-10 space-y-2">
+          <p>暫時未有任何記錄</p>
+          <p class="text-xs">註：資料會安全儲存喺你嘅設備中，不會上傳。</p>
+        </div>
+
+        <div v-else class="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
+          <div v-for="log in logs" :key="log.id" class="relative flex items-center justify-between group">
+            
+            <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shrink-0 shadow-sm"
+                 :class="log.type === 'expired' ? 'bg-red-400' : (log.type === 'draw' && log.desc.includes('未有中獎')) ? 'bg-gray-400' : log.type === 'draw' ? 'bg-pink-400' : 'bg-blue-400'">
+              <svg v-if="log.type === 'expired'" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              <svg v-else-if="log.type === 'draw' && log.desc.includes('未有中獎')" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <svg v-else-if="log.type === 'draw'" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+              </svg>
+              <svg v-else class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+              </svg>
+            </div>
+            
+            <div class="w-[calc(100%-4rem)] bg-white p-4 rounded-2xl border shadow-sm" :class="log.type === 'expired' ? 'border-red-100' : 'border-gray-100'">
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs font-bold px-2 py-1 rounded-md"
+                      :class="log.type === 'expired' ? 'bg-red-50 text-red-600' : (log.type === 'draw' && log.desc.includes('未有中獎')) ? 'bg-gray-100 text-gray-600' : log.type === 'draw' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'">
+                  {{ log.type === 'expired' ? '已過期' : log.type === 'draw' ? '抽券' : '核銷' }}
+                </span>
+                <time class="text-[10px] text-gray-400">{{ formatDate(log.date) }}</time>
+              </div>
+              <p class="text-sm font-medium mt-2 leading-relaxed" :class="log.type === 'expired' ? 'text-red-700' : 'text-gray-700'">
+                {{ log.desc }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TAB 5: 資訊 (Info) ==================== -->
+      <div v-if="activeTab === 'info'" class="p-4 space-y-5 pb-24">
+        <div class="bg-gradient-to-r from-indigo-500 to-purple-500 p-5 rounded-3xl text-white shadow-md">
+          <h2 class="text-xl font-bold flex items-center gap-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            活動詳細資訊
+          </h2>
+          <p class="text-indigo-100 text-sm mt-2">2026 社區消費大獎賞規則及查詢</p>
+        </div>
+
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-3">
+          <div class="flex items-center gap-2 text-indigo-600 mb-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            <h3 class="font-bold text-gray-800">活動日期 (Período)</h3>
+          </div>
+          <p class="text-2xl font-black text-gray-800 bg-gray-50 inline-block px-4 py-2 rounded-xl">
+            4.10 <span class="text-indigo-500">▶</span> 6.18, 2026
+          </p>
+        </div>
+
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-4">
+          <div class="flex items-center gap-2 text-pink-500 mb-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <h3 class="font-bold text-gray-800">玩法簡介</h3>
+          </div>
+          
+          <div class="bg-pink-50 rounded-xl p-4 border border-pink-100">
+            <h4 class="font-bold text-pink-800 flex items-center gap-2 mb-2">
+              <span class="bg-pink-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-mono">1</span>
+              周五至周日 抽券
+            </h4>
+            <p class="text-sm text-pink-700">於全澳合資格商戶用手機支付滿 <strong>50元</strong> 可獲抽電子優惠 <strong>3次</strong> 嘅機會。</p>
+          </div>
+
+          <div class="bg-blue-50 rounded-xl p-4 border border-blue-100">
+            <h4 class="font-bold text-blue-800 flex items-center gap-2 mb-2">
+              <span class="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-mono">2</span>
+              周一至周四 核券
+            </h4>
+            <p class="text-sm text-blue-700">於緊接的周一至周四於全澳可核銷電子優惠的商戶使用。每消費30元可使用一張10元券 (即3倍金額核銷)。</p>
+          </div>
+        </div>
+
+        <div class="bg-orange-50 border border-orange-100 rounded-2xl p-5 shadow-sm">
+          <h3 class="font-bold text-orange-800 mb-2 text-sm">長者卡 / 殘疾卡專屬</h3>
+          <p class="text-xs text-orange-700 leading-relaxed">使用澳門通長者卡或殘疾卡，拍卡領取 <strong>500元</strong> 消費立減優惠。</p>
+        </div>
+
+        <div class="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm space-y-3">
+          <div class="flex items-center gap-2 text-green-500 mb-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+            </svg>
+            <h3 class="font-bold text-gray-800">查詢熱線 (Linha aberta)</h3>
+          </div>
+          <div class="space-y-2">
+            <a href="tel:28575472" class="flex items-center justify-between bg-gray-50 p-3 rounded-xl active:bg-gray-100 transition-colors">
+              <span class="font-bold text-gray-700 text-lg">2857 5472</span>
+              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+              </svg>
+            </a>
+            <a href="tel:28575439" class="flex items-center justify-between bg-gray-50 p-3 rounded-xl active:bg-gray-100 transition-colors">
+              <span class="font-bold text-gray-700 text-lg">2857 5439</span>
+              <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.94.725l.548 2.2a1 1 0 01-.321.988l-1.305.98a10.582 10.582 0 004.872 4.872l.98-1.305a1 1 0 01.988-.321l2.2.548a1 1 0 01.725.94V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+              </svg>
+            </a>
+          </div>
+          
+          <!-- 設計師鳴謝 -->
+          <div class="mt-6 pt-4 border-t border-gray-100 text-center">
+            <p class="text-xs text-gray-400">主辦：澳門中華總商會、經濟及科技發展局、澳門金融管理局</p>
+            <p class="text-[10px] text-gray-400 mt-2 font-mono tracking-wider">設計者：ronlam1981@gmail.com</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- 底部導覽欄 (5 標籤) -->
+    <nav class="bg-white border-t border-gray-100 flex justify-around items-center pb-safe pt-1 fixed bottom-0 w-full max-w-md z-20 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
+      <button @click="activeTab = 'home'" class="flex flex-col items-center justify-center w-full py-2">
+        <div class="p-1.5 rounded-xl transition-all duration-300" :class="activeTab === 'home' ? 'bg-blue-50 text-blue-500' : 'text-gray-400'">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+          </svg>
+        </div>
+        <span class="text-[10px] mt-1 font-bold" :class="activeTab === 'home' ? 'text-blue-500' : 'text-gray-500'">主頁</span>
+      </button>
+
+      <button @click="activeTab = 'draw'" class="flex flex-col items-center justify-center w-full py-2">
+        <div class="p-1.5 rounded-xl transition-all duration-300" :class="activeTab === 'draw' ? 'bg-pink-50 text-pink-500' : 'text-gray-400'">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+          </svg>
+        </div>
+        <span class="text-[10px] mt-1 font-bold" :class="activeTab === 'draw' ? 'text-pink-500' : 'text-gray-500'">抽券</span>
+      </button>
+
+      <button @click="activeTab = 'redeem'" class="flex flex-col items-center justify-center w-full py-2">
+        <div class="p-1.5 rounded-xl transition-all duration-300" :class="activeTab === 'redeem' ? 'bg-cyan-50 text-cyan-500' : 'text-gray-400'">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+          </svg>
+        </div>
+        <span class="text-[10px] mt-1 font-bold" :class="activeTab === 'redeem' ? 'text-cyan-500' : 'text-gray-500'">核銷</span>
+      </button>
+
+      <button @click="activeTab = 'history'" class="flex flex-col items-center justify-center w-full py-2">
+        <div class="p-1.5 rounded-xl transition-all duration-300" :class="activeTab === 'history' ? 'bg-gray-100 text-gray-800' : 'text-gray-400'">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <span class="text-[10px] mt-1 font-bold" :class="activeTab === 'history' ? 'text-gray-800' : 'text-gray-500'">記錄</span>
+      </button>
+
+      <button @click="activeTab = 'info'" class="flex flex-col items-center justify-center w-full py-2">
+        <div class="p-1.5 rounded-xl transition-all duration-300" :class="activeTab === 'info' ? 'bg-indigo-50 text-indigo-500' : 'text-gray-400'">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <span class="text-[10px] mt-1 font-bold" :class="activeTab === 'info' ? 'text-indigo-500' : 'text-gray-500'">資訊</span>
+      </button>
+    </nav>
+
+    <!-- 週四傍晚每小時提醒模態視窗 -->
+    <div v-if="showUrgentAlert" class="fixed inset-0 bg-red-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
+      <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl border-2 border-red-500">
+        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+          <svg class="w-6 h-6 text-red-600 animate-pulse" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <h3 class="text-xl font-black text-red-600 mb-2 text-center">最後核銷衝刺！</h3>
+        <p class="text-gray-700 mb-6 text-center font-medium leading-relaxed">
+          而家已經係星期四傍晚！<br/>
+          你有 <span class="text-red-600 font-bold text-lg">{{ expiringSoonCount }}</span> 張優惠券即將於今晚 <span class="underline">{{ earliestExpiryDate }}</span> 到期。<br/>
+          快啲趁今晚用咗佢，過期抽獎券將會自動清零！
+        </p>
+        <button 
+          @click="dismissUrgentAlert"
+          class="w-full py-3.5 rounded-xl bg-red-500 text-white font-bold active:bg-red-600 transition-colors shadow-md shadow-red-200"
+        >
+          我知道啦，馬上去用
+        </button>
+      </div>
+    </div>
+
+    <!-- 二次防呆確認彈窗 -->
+    <div v-if="confirmDialog" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div class="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl">
+        <h3 class="text-xl font-bold mb-3" :class="confirmDialog.isDestructive ? 'text-red-600' : 'text-gray-900'">
+          {{ confirmDialog.title }}
+        </h3>
+        <p class="text-gray-600 mb-6 whitespace-pre-wrap leading-relaxed">{{ confirmDialog.content }}</p>
+        <div class="flex gap-3">
+          <button 
+            @click="confirmDialog = null"
+            class="flex-1 py-3.5 rounded-xl bg-gray-100 text-gray-700 font-bold active:bg-gray-200 transition-colors"
+          >
+            取消
+          </button>
+          <button 
+            @click="confirmDialog.onConfirm"
+            class="flex-1 py-3.5 rounded-xl text-white font-bold transition-colors shadow-md"
+            :class="confirmDialog.isDestructive ? 'bg-red-500 active:bg-red-600 shadow-red-200' : 'bg-blue-600 active:bg-blue-700 shadow-blue-200'"
+          >
+            {{ confirmDialog.isDestructive ? '確認' : '確認無誤' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { createApp, ref, computed, onMounted, watch } = Vue;
+
+    // 定義 LocalStorage 鍵值及常數
+    const STORAGE_KEY_COUPONS = 'macau_coupons_2026';
+    const STORAGE_KEY_LOGS = 'macau_logs_2026';
+    const STORAGE_KEY_HIDDEN_PLATFORMS = 'macau_hidden_platforms_2026';
+    
+    const ALL_PLATFORMS = [
+      'MPay 澳門通', 'BOC 中銀', 'Tai Fung 大豐', 'ICBC 工銀', 
+      'Luso 國際銀行', 'CGB 廣發', 'ANT BANK 支付寶', 'UePay 極易付'
+    ];
+    const DENOMINATIONS = [10, 20, 50, 100, 200];
+
+    // 安全的時間日期格式化
+    const formatDate = (dateString) => {
+      if (!dateString) return '無日期';
+      const d = new Date(dateString);
+      if (isNaN(d.getTime())) return '無效日期';
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    // 自動計算下一個星期四作為到期日
+    const getNextThursday = (date) => {
+      const d = new Date(date);
+      const day = d.getDay();
+      let daysUntilThursday = (4 - day + 7) % 7;
+      if (day === 4) daysUntilThursday = 7; 
+      d.setDate(d.getDate() + daysUntilThursday);
+      d.setHours(23, 59, 59, 999);
+      return d;
+    };
+
+    createApp({
+      setup() {
+        const activeTab = ref('home');
+        const sortOrder = ref('desc');
+        const confirmDialog = ref(null);
+        const showUrgentAlert = ref(false);
+        const lastRemindedHour = ref(localStorage.getItem('lastRemindedHour') || null);
+        const todayString = ref('');
+
+        // 抽券及核券輸入狀態
+        const selectedPlatform = ref('');
+        const drawCounts = ref({ 10: 0, 20: 0, 50: 0, 100: 0, 200: 0 });
+        const noWinCount = ref(0);
+        const errorMsg = ref('');
+        const showSettings = ref(false);
+
+        const selectedCouponId = ref('');
+        const spendAmount = ref('');
+        const redeemErrorMsg = ref('');
+
+        // 載入 localStorage 資料 (高度防禦性解析)
+        const coupons = ref([]);
+        const logs = ref([]);
+        const hiddenPlatforms = ref([]);
+
+        try {
+          const savedCoupons = localStorage.getItem(STORAGE_KEY_COUPONS);
+          coupons.value = savedCoupons ? JSON.parse(savedCoupons) : [];
+          if (!Array.isArray(coupons.value)) coupons.value = [];
+        } catch (e) {
+          console.error('Coupons 解析出錯: ', e);
+          coupons.value = [];
+        }
+
+        try {
+          const savedLogs = localStorage.getItem(STORAGE_KEY_LOGS);
+          logs.value = savedLogs ? JSON.parse(savedLogs) : [];
+          if (!Array.isArray(logs.value)) logs.value = [];
+        } catch (e) {
+          console.error('Logs 解析出錯: ', e);
+          logs.value = [];
+        }
+
+        try {
+          const savedHidden = localStorage.getItem(STORAGE_KEY_HIDDEN_PLATFORMS);
+          hiddenPlatforms.value = savedHidden ? JSON.parse(savedHidden) : [];
+          if (!Array.isArray(hiddenPlatforms.value)) hiddenPlatforms.value = [];
+        } catch (e) {
+          console.error('HiddenPlatforms 解析出錯: ', e);
+          hiddenPlatforms.value = [];
+        }
+
+        // 監聽並自動保存
+        watch(coupons, (newVal) => {
+          localStorage.setItem(STORAGE_KEY_COUPONS, JSON.stringify(newVal));
+        }, { deep: true });
+
+        watch(logs, (newVal) => {
+          localStorage.setItem(STORAGE_KEY_LOGS, JSON.stringify(newVal));
+        }, { deep: true });
+
+        watch(hiddenPlatforms, (newVal) => {
+          localStorage.setItem(STORAGE_KEY_HIDDEN_PLATFORMS, JSON.stringify(newVal));
+        }, { deep: true });
+
+        // 初始化
+        onMounted(() => {
+          const today = new Date();
+          const options = { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'long' };
+          todayString.value = today.toLocaleDateString('zh-HK', options);
+          
+          checkExpiryAndReminders();
+          setInterval(checkExpiryAndReminders, 60000); // 每分鐘背景檢查
+        });
+
+        // 計算屬性
+        const activePlatforms = computed(() => ALL_PLATFORMS.filter(p => !hiddenPlatforms.value.includes(p)));
+        const activeCoupons = computed(() => coupons.value.filter(c => c && c.status === 'active'));
+        const totalValue = computed(() => activeCoupons.value.reduce((sum, c) => sum + (c.amount || 0), 0));
+        
+        const totalDrawSelectedCount = computed(() => Object.values(drawCounts.value).reduce((a, b) => a + b, 0));
+
+        // 按總金額及面額大小進行精準排序
+        const sortedPlatformsGrouped = computed(() => {
+          const grouped = {};
+          activeCoupons.value.forEach(c => {
+            if (c && c.platform) {
+              if (!grouped[c.platform]) {
+                grouped[c.platform] = {
+                  platform: c.platform,
+                  coupons: [],
+                  totalAmount: 0,
+                  totalRequiredSpend: 0
+                };
+              }
+              grouped[c.platform].coupons.push(c);
+              grouped[c.platform].totalAmount += (c.amount || 0);
+              grouped[c.platform].totalRequiredSpend += ((c.amount || 0) * 3);
+            }
+          });
+
+          const platformsArray = Object.values(grouped);
+
+          // 承辦商總額前後排序
+          platformsArray.sort((a, b) => {
+            return sortOrder.value === 'desc' 
+              ? b.totalAmount - a.totalAmount 
+              : a.totalAmount - b.totalAmount;
+          });
+
+          // 各承辦商內部優惠券大小排序
+          platformsArray.forEach(p => {
+            p.coupons.sort((a, b) => {
+              return sortOrder.value === 'desc' 
+                ? b.amount - a.amount 
+                : a.amount - b.amount;
+            });
+          });
+
+          return platformsArray;
+        });
+
+        const expiringCoupons = computed(() => {
+          const now = new Date();
+          return activeCoupons.value.filter(c => {
+            if (!c || !c.expiryDate) return false;
+            const expiry = new Date(c.expiryDate);
+            const diffDays = (expiry - now) / (1000 * 60 * 60 * 24);
+            return diffDays >= 0 && diffDays <= 5;
+          });
+        });
+
+        const expiringSoonCount = computed(() => expiringCoupons.value.length);
+
+        const earliestExpiryDate = computed(() => {
+          if (expiringSoonCount.value === 0) return '';
+          const validTimes = expiringCoupons.value
+            .map(c => new Date(c.expiryDate).getTime())
+            .filter(t => !isNaN(t));
+          if (validTimes.length === 0) return '';
+          const minDate = new Date(Math.min(...validTimes));
+          return formatDate(minDate);
+        });
+
+        const unusedPlatforms = computed(() => {
+          const used = new Set(activeCoupons.value.map(c => c.platform));
+          return activePlatforms.value.filter(p => !used.has(p));
+        });
+
+        const selectedCoupon = computed(() => activeCoupons.value.find(c => c.id === selectedCouponId.value));
+        const isEligible = computed(() => {
+          const req = selectedCoupon.value ? selectedCoupon.value.amount * 3 : 0;
+          return spendAmount.value && Number(spendAmount.value) >= req;
+        });
+
+        // 方法及操作
+        const toggleSortOrder = () => {
+          sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc';
+        };
+
+        const togglePlatform = (platform) => {
+          if (hiddenPlatforms.value.includes(platform)) {
+            hiddenPlatforms.value = hiddenPlatforms.value.filter(p => p !== platform);
+          } else {
+            hiddenPlatforms.value.push(platform);
+          }
+        };
+
+        const handleAdd = (amount) => drawCounts.value[amount]++;
+        const handleSub = (amount) => drawCounts.value[amount] = Math.max(0, drawCounts.value[amount] - 1);
+
+        const addLog = (type, desc) => {
+          logs.value.unshift({
+            id: Date.now().toString() + Math.random(),
+            type,
+            date: new Date().toISOString(),
+            desc
+          });
+        };
+
+        const handlePreSave = () => {
+          if (!selectedPlatform.value) return errorMsg.value = '請先選擇承辦單位！';
+          if (totalDrawSelectedCount.value === 0 && noWinCount.value === 0) {
+            return errorMsg.value = '請記錄至少一張優惠券或未有中獎次數！';
+          }
+          errorMsg.value = '';
+
+          let summaryDesc = [];
+          if (totalDrawSelectedCount.value > 0) {
+            DENOMINATIONS.forEach(amount => {
+              if (drawCounts.value[amount] > 0) summaryDesc.push(`${drawCounts.value[amount]}張 $${amount}`);
+            });
+          }
+          if (noWinCount.value > 0) {
+            summaryDesc.push(`${noWinCount}次未有中獎`);
+          }
+
+          confirmDialog.value = {
+            title: '確認新增抽券記錄？',
+            content: `你選擇咗「${selectedPlatform.value}」，共記錄：\n${summaryDesc.join('、')}\n\n請核對資料無誤後再確認。`,
+            isDestructive: false,
+            onConfirm: () => {
+              handleSave(summaryDesc, totalDrawSelectedCount.value > 0);
+              confirmDialog.value = null;
+            }
+          };
+        };
+
+        const handleSave = (summaryDesc, hasTickets) => {
+          if (hasTickets) {
+            const newCoupons = [];
+            const now = new Date();
+            const expiry = getNextThursday(now).toISOString();
+            
+            DENOMINATIONS.forEach(amount => {
+              const count = drawCounts.value[amount];
+              if (count > 0) {
+                for (let i = 0; i < count; i++) {
+                  newCoupons.push({
+                    id: Date.now().toString() + Math.random(),
+                    amount,
+                    platform: selectedPlatform.value,
+                    drawDate: now.toISOString(),
+                    expiryDate: expiry,
+                    status: 'active'
+                  });
+                }
+              }
+            });
+            coupons.value = [...coupons.value, ...newCoupons];
+          }
+
+          addLog('draw', `喺 ${selectedPlatform.value} 抽券: ${summaryDesc.join(', ')}`);
+          
+          selectedPlatform.value = '';
+          drawCounts.value = { 10: 0, 20: 0, 50: 0, 100: 0, 200: 0 };
+          noWinCount.value = 0;
+          
+          if (hasTickets) {
+            activeTab.value = 'home';
+          } else {
+            alert('已成功記錄「未有中獎」。再接再厲！');
+          }
+        };
+
+        const goToRedeem = (couponId) => {
+          selectedCouponId.value = couponId;
+          activeTab.value = 'redeem';
+        };
+
+        const handlePreRedeem = () => {
+          if (!selectedCoupon.value) return redeemErrorMsg.value = '請選擇要核銷嘅優惠券！';
+          if (!isEligible.value) return redeemErrorMsg.value = `消費金額不足！使用 $${selectedCoupon.value.amount} 券需消費滿 $${selectedCoupon.value.amount * 3}。`;
+          redeemErrorMsg.value = '';
+
+          confirmDialog.value = {
+            title: '確認核銷此優惠券？',
+            content: `承辦機構：${selectedCoupon.value.platform}\n面額：$${selectedCoupon.value.amount} 優惠券\n總消費金額：$${spendAmount.value}\n\n請確認已成功付款並核銷。`,
+            isDestructive: false,
+            onConfirm: () => {
+              handleRedeem();
+              confirmDialog.value = null;
+            }
+          };
+        };
+
+        const handleRedeem = () => {
+          coupons.value = coupons.value.map(c => 
+            c.id === selectedCouponId.value ? { ...c, status: 'used', usedDate: new Date().toISOString() } : c
+          );
+
+          addLog('redeem', `核銷 $${selectedCoupon.value.amount} 券 (${selectedCoupon.value.platform}) - 總消費 $${spendAmount.value}`);
+          
+          selectedCouponId.value = '';
+          spendAmount.value = '';
+          activeTab.value = 'home';
+        };
+
+        // 自動過期及計時器提醒
+        const checkExpiryAndReminders = () => {
+          const now = new Date();
+          let hasExpired = false;
+          const expiredThisRound = [];
+
+          if (!Array.isArray(coupons.value)) coupons.value = [];
+
+          const updatedCoupons = coupons.value.map(c => {
+            if (c && c.status === 'active' && c.expiryDate && new Date(c.expiryDate) < now) {
+              hasExpired = true;
+              expiredThisRound.push(c);
+              return { ...c, status: 'expired' };
+            }
+            return c;
+          });
+
+          if (hasExpired) {
+            const expiredByPlatform = {};
+            expiredThisRound.forEach(c => {
+              if (c && c.platform) {
+                if (!expiredByPlatform[c.platform]) {
+                  expiredByPlatform[c.platform] = { count: 0, total: 0 };
+                }
+                expiredByPlatform[c.platform].count++;
+                expiredByPlatform[c.platform].total += (c.amount || 0);
+              }
+            });
+
+            const newLogs = Object.keys(expiredByPlatform).map(platform => ({
+              id: Date.now().toString() + Math.random(),
+              type: 'expired',
+              date: now.toISOString(),
+              desc: `浪費了的抽獎券！「${platform}」共 ${expiredByPlatform[platform].count} 張優惠券 (總值 $${expiredByPlatform[platform].total}) 因超過核銷限期，已自動清零作廢。`
+            }));
+
+            coupons.value = updatedCoupons;
+            logs.value = [...newLogs, ...logs.value];
+          }
+
+          // 星期四晚上每小時提醒一次
+          const active = coupons.value.filter(c => c && c.status === 'active');
+          const expiring = active.filter(c => {
+            if (!c || !c.expiryDate) return false;
+            const expiry = new Date(c.expiryDate);
+            const diffDays = (expiry - now) / (1000 * 60 * 60 * 24);
+            return diffDays >= 0 && diffDays <= 5;
+          });
+
+          if (expiring.length > 0) {
+            const isThursday = now.getDay() === 4;
+            const currentHour = now.getHours();
+
+            if (isThursday && currentHour >= 18) {
+              const hourKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${currentHour}`;
+              const lastReminded = localStorage.getItem('lastRemindedHour');
+              if (lastReminded !== hourKey) {
+                showUrgentAlert.value = true;
+              }
+            }
+          }
+        };
+
+        const dismissUrgentAlert = () => {
+          const now = new Date();
+          const hourKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${now.getHours()}`;
+          localStorage.setItem('lastRemindedHour', hourKey);
+          lastRemindedHour.value = hourKey;
+          showUrgentAlert.value = false;
+        };
+
+        const handleExportData = () => {
+          const dataToExport = {
+            coupons: coupons.value,
+            logs: logs.value,
+            hiddenPlatforms: hiddenPlatforms.value,
+            exportDate: new Date().toISOString()
+          };
+          
+          const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `macau_coupon_backup_${formatDate(new Date())}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        };
+
+        const handleImportData = (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            try {
+              const importedData = JSON.parse(event.target.result);
+              
+              if (!importedData || !importedData.coupons || !importedData.logs) {
+                alert('檔案格式錯誤，無法讀取資料！');
+                return;
+              }
+
+              confirmDialog.value = {
+                title: '確認匯入資料？',
+                content: '匯入將會覆蓋目前所有嘅優惠券同操作記錄，你確定要繼續嗎？此操作無法還原。',
+                isDestructive: true,
+                onConfirm: () => {
+                  coupons.value = Array.isArray(importedData.coupons) ? importedData.coupons : [];
+                  logs.value = Array.isArray(importedData.logs) ? importedData.logs : [];
+                  hiddenPlatforms.value = Array.isArray(importedData.hiddenPlatforms) ? importedData.hiddenPlatforms : [];
+                  confirmDialog.value = null;
+                  alert('記錄匯入成功！');
+                }
+              };
+            } catch (err) {
+              alert('讀取檔案失敗，請確保選擇正確的 JSON 備份檔。');
+              console.error(err);
+            }
+          };
+          reader.readAsText(file);
+          e.target.value = null; // 重置
+        };
+
+        const clearAllData = () => {
+          confirmDialog.value = {
+            title: '⚠️ 警告：清除所有資料',
+            content: '你確定要清除所有優惠券同記錄嗎？\n此操作無法復原。',
+            isDestructive: true,
+            onConfirm: () => {
+              coupons.value = [];
+              logs.value = [];
+              confirmDialog.value = null;
+            }
+          };
+        };
+
+        return {
+          activeTab,
+          sortOrder,
+          confirmDialog,
+          showUrgentAlert,
+          todayString,
+          coupons,
+          logs,
+          hiddenPlatforms,
+          selectedPlatform,
+          drawCounts,
+          noWinCount,
+          errorMsg,
+          showSettings,
+          selectedCouponId,
+          spendAmount,
+          redeemErrorMsg,
+          ALL_PLATFORMS,
+          DENOMINATIONS,
+          activePlatforms,
+          activeCoupons,
+          totalValue,
+          totalDrawSelectedCount,
+          sortedPlatformsGrouped,
+          expiringSoonCount,
+          earliestExpiryDate,
+          unusedPlatforms,
+          selectedCoupon,
+          isEligible,
+          toggleSortOrder,
+          togglePlatform,
+          handleAdd,
+          handleSub,
+          handlePreSave,
+          goToRedeem,
+          handlePreRedeem,
+          dismissUrgentAlert,
+          handleExportData,
+          handleImportData,
+          clearAllData,
+          formatDate
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
