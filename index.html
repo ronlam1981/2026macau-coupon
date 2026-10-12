@@ -9,6 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Vue 3 CDN (cdnjs 高穩定版本) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
+  <script src="./coupon-core.js"></script>
   <style>
     .pb-safe {
       padding-bottom: env(safe-area-inset-bottom, 16px);
@@ -201,6 +202,23 @@
             <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
           </div>
 
+          <div v-if="!isTodayDrawDay" class="bg-amber-50 border border-amber-200 p-4 rounded-2xl shadow-sm space-y-3">
+            <div>
+              <h3 class="text-sm font-bold text-amber-900">⚠️ 非領券日補登</h3>
+              <p class="text-xs text-amber-800 mt-1 leading-relaxed">今日唔係星期五至日。你可以補登之前漏記嘅個人紀錄；呢個操作唔代表官方補領、交易或資格變更。</p>
+            </div>
+            <label class="block text-sm font-bold text-amber-900" for="backfill-draw-date">實際領券日期</label>
+            <input
+              id="backfill-draw-date"
+              v-model="selectedDrawDate"
+              type="date"
+              :min="CAMPAIGN_START"
+              :max="macauToday"
+              class="w-full rounded-xl border border-amber-300 bg-white px-3 py-2.5 text-gray-800 font-medium"
+            />
+            <p class="text-xs text-amber-700">只接受活動期內星期五、六或日；保存前會再顯示所屬期數及到期日。</p>
+          </div>
+
           <!-- 未使用平台提醒名單 -->
           <div v-if="unusedPlatforms.length > 0 && unusedPlatforms.length < activePlatforms.length" class="bg-indigo-50 border border-indigo-100 p-4 rounded-2xl shadow-sm">
             <h3 class="text-sm font-bold text-indigo-800 flex items-center gap-2 mb-2">
@@ -298,7 +316,7 @@
           <p v-if="errorMsg" class="text-red-500 text-sm text-center font-bold bg-red-50 py-2 rounded-xl border border-red-100">
             {{ errorMsg }}
           </p>
-          <button 
+          <button
             @click="handlePreSave"
             :disabled="activePlatforms.length === 0"
             class="w-full bg-gray-900 text-white font-bold text-lg py-4 rounded-2xl shadow-lg active:scale-[0.98] transition-transform disabled:bg-gray-300 disabled:shadow-none"
@@ -581,7 +599,7 @@
                       :class="log.type === 'expired' ? 'bg-red-50 text-red-600' : (log.type === 'draw' && log.desc.includes('未有中獎')) ? 'bg-gray-100 text-gray-600' : log.type === 'draw' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'">
                   {{ log.type === 'expired' ? '已過期' : log.type === 'draw' ? '抽券' : '核銷' }}
                 </span>
-                <time class="text-[10px] text-gray-400">{{ formatDate(log.date) }}</time>
+                <time class="text-[10px] text-gray-400">{{ formatDate(log.type === 'draw' && log.drawDate ? log.drawDate : log.date) }}</time>
               </div>
               <p class="text-sm font-medium mt-2 leading-relaxed" :class="log.type === 'expired' ? 'text-red-700' : 'text-gray-700'">
                 {{ log.desc }}
@@ -811,17 +829,6 @@
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     };
 
-    // 星期五至日領券，截止日為緊接的星期四 23:59:59（本機時間）。
-    const getNextThursday = (date) => {
-      const d = new Date(date);
-      const day = d.getDay();
-      let daysUntilThursday = (4 - day + 7) % 7;
-      if (day === 4) daysUntilThursday = 7; 
-      d.setDate(d.getDate() + daysUntilThursday);
-      d.setHours(23, 59, 59, 999);
-      return d;
-    };
-
     createApp({
       setup() {
         const activeTab = ref('home');
@@ -843,6 +850,9 @@
         const noWinCount = ref(0);
         const errorMsg = ref('');
         const showSettings = ref(false);
+        const macauToday = ref(CouponCore.getMacauDateKey(new Date()));
+        const selectedDrawDate = ref(CouponCore.getMostRecentDrawDate(new Date()) || macauToday.value);
+        const isTodayDrawDay = computed(() => CouponCore.isDrawDate(macauToday.value));
 
         const selectedCouponIds = ref([]);
         const spendAmount = ref('');
@@ -903,6 +913,8 @@
           const today = new Date();
           const options = { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'long' };
           todayString.value = today.toLocaleDateString('zh-HK', options);
+          macauToday.value = CouponCore.getMacauDateKey(today);
+          selectedDrawDate.value = CouponCore.getMostRecentDrawDate(today) || macauToday.value;
           
           checkExpiryAndReminders();
           setInterval(checkExpiryAndReminders, 60000); // 每分鐘背景檢查
@@ -1020,9 +1032,6 @@
 
         const handlePreSave = () => {
           const now = new Date();
-          if (now < new Date(2026, 9, 9) || now >= new Date(2026, 11, 18) || ![0, 5, 6].includes(now.getDay())) {
-            return errorMsg.value = '只可於活動期間星期五至日記錄本輪新領取的券。';
-          }
           if (!selectedPlatform.value) return errorMsg.value = '請先選擇承辦單位！';
           if (totalDrawSelectedCount.value === 0 && noWinCount.value === 0) {
             return errorMsg.value = '請記錄至少一張優惠券或未有中獎次數！';
@@ -1030,6 +1039,10 @@
           if (totalDrawSelectedCount.value + noWinCount.value > 3) {
             return errorMsg.value = '每個實名錢包每周最多領取3次；請核對本周已記錄次數。';
           }
+
+          const drawDateKey = isTodayDrawDay.value ? macauToday.value : selectedDrawDate.value;
+          const dateError = CouponCore.validateBackfillDate(drawDateKey, now);
+          if (dateError) return errorMsg.value = dateError;
           errorMsg.value = '';
 
           let summaryDesc = [];
@@ -1042,42 +1055,40 @@
             summaryDesc.push(`${noWinCount.value}次未有中獎`);
           }
 
+          const periodStart = CouponCore.getDrawPeriodStart(drawDateKey);
+          const expiryDate = CouponCore.getExpiryISOString(drawDateKey).slice(0, 10);
+          const entryId = `draw-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const drawTime = isTodayDrawDay.value ? now : null;
+          const backfillWarning = isTodayDrawDay.value
+            ? ''
+            : '⚠️ 你而家喺非領券日補登。呢個只會更新本瀏覽器嘅個人記錄，唔會補領官方優惠券或改變資格。\n\n';
           confirmDialog.value = {
-            title: '確認新增抽券記錄？',
-            content: `你選擇咗「${selectedPlatform.value}」，共記錄：\n${summaryDesc.join('、')}\n\n請核對資料無誤後再確認。`,
+            title: isTodayDrawDay.value ? '確認新增抽券記錄？' : '再次確認補登記錄？',
+            content: `${backfillWarning}實際領券日期：${drawDateKey}\n所屬期數：${periodStart} 起\n券到期日：${expiryDate}（澳門時間）\n\n你選擇咗「${selectedPlatform.value}」，共記錄：\n${summaryDesc.join('、')}\n\n請核對日期、期數及資料無誤後再確認。`,
             isDestructive: false,
             onConfirm: () => {
-              handleSave(summaryDesc, totalDrawSelectedCount.value > 0);
-              confirmDialog.value = null;
+              if (handleSave(drawDateKey, drawTime, entryId, totalDrawSelectedCount.value > 0)) {
+                confirmDialog.value = null;
+              }
             }
           };
         };
 
-        const handleSave = (summaryDesc, hasTickets) => {
-          if (hasTickets) {
-            const newCoupons = [];
-            const now = new Date();
-            const expiry = getNextThursday(now).toISOString();
-            
-            DENOMINATIONS.forEach(amount => {
-              const count = drawCounts.value[amount];
-              if (count > 0) {
-                for (let i = 0; i < count; i++) {
-                  newCoupons.push({
-                    id: Date.now().toString() + Math.random(),
-                    amount,
-                    platform: selectedPlatform.value,
-                    drawDate: now.toISOString(),
-                    expiryDate: expiry,
-                    status: 'active'
-                  });
-                }
-              }
-            });
-            coupons.value = [...coupons.value, ...newCoupons];
-          }
-
-          addLog('draw', `喺 ${selectedPlatform.value} 抽券: ${summaryDesc.join(', ')}`);
+        const handleSave = (drawDateKey, drawTime, entryId, hasTickets) => {
+          const result = CouponCore.commitDrawEntry({
+            coupons: coupons.value,
+            logs: logs.value,
+            platform: selectedPlatform.value,
+            drawCounts: drawCounts.value,
+            noWinCount: noWinCount.value,
+            drawDateKey,
+            recordedAt: new Date(),
+            drawTime,
+            entryId
+          });
+          if (!result.added) return false;
+          coupons.value = result.coupons;
+          logs.value = result.logs;
           
           selectedPlatform.value = '';
           drawCounts.value = { 10: 0, 20: 0, 50: 0, 100: 0, 200: 0 };
@@ -1088,6 +1099,7 @@
           } else {
             alert('已成功記錄「未有中獎」。再接再厲！');
           }
+          return true;
         };
 
         const toggleCouponSelection = (id) => {
@@ -1396,6 +1408,9 @@
           noWinCount,
           errorMsg,
           showSettings,
+          macauToday,
+          selectedDrawDate,
+          isTodayDrawDay,
           selectedCouponIds,
           spendAmount,
           redeemErrorMsg,
@@ -1404,6 +1419,7 @@
           suggestPlan,
           ALL_PLATFORMS,
           DENOMINATIONS,
+          CAMPAIGN_START: CouponCore.CAMPAIGN_START,
           activePlatforms,
           activeCoupons,
           totalValue,
