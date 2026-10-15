@@ -62,3 +62,33 @@ test('invalid or future backfill dates are rejected', () => {
   assert.match(core.validateBackfillDate('2026-10-12', monday), /星期五、六或日/);
   assert.match(core.validateBackfillDate('2026-10-16', monday), /唔可以遲過/);
 });
+
+test('usage plans keep wallets separate, use larger coupons first and show spend and self-pay', () => {
+  const coupons = [
+    { id: 'a10', amount: 10, platform: 'Wallet A', status: 'active' },
+    { id: 'b20', amount: 20, platform: 'Wallet B', status: 'active' },
+    { id: 'a50', amount: 50, platform: 'Wallet A', status: 'active' },
+    { id: 'used', amount: 200, platform: 'Wallet A', status: 'used' }
+  ];
+  const result = core.buildUsagePlans(coupons, new Date('2026-10-15T00:00:00Z'));
+  assert.deepEqual(result.totals, { faceValue: 80, requiredSpend: 240, outOfPocket: 160 });
+  assert.equal(result.options[0].transactionCount, 2);
+  assert.deepEqual(result.options[0].transactions[0].coupons.map(coupon => coupon.amount), [50, 10]);
+  assert.equal(result.options[1].transactionCount, 3);
+  assert.deepEqual(result.options[1].transactions.map(item => item.requiredSpend), [150, 30, 60]);
+});
+
+test('expired and merchant offers do not enter the government usage plan', () => {
+  const coupons = [
+    { id: 'expired', amount: 50, platform: 'Wallet A', status: 'active', expiryDate: '2026-10-14T15:59:59.999Z' },
+    { id: 'merchant', type: 'merchant_discount', amount: 12, platform: 'Wallet A', status: 'active' },
+    { id: 'active', amount: 20, platform: 'Wallet A', status: 'active', expiryDate: '2026-10-16T15:59:59.999Z' }
+  ];
+  const result = core.buildUsagePlans(coupons, new Date('2026-10-15T00:00:00Z'));
+  assert.equal(result.totals.faceValue, 20);
+});
+
+test('unknown merchant terms are excluded from automatic optimisation', () => {
+  assert.equal(core.isMerchantOfferEligibleForAutoPlan({ type: 'merchant_discount', status: 'active', termsVerified: false, stackability: 'unknown' }), false);
+  assert.equal(core.isMerchantOfferEligibleForAutoPlan({ type: 'merchant_gift', status: 'active', termsVerified: true, stackability: 'verified' }), true);
+});

@@ -9,6 +9,9 @@
   const CAMPAIGN_START = '2026-10-09';
   const CAMPAIGN_END = '2026-12-17';
   const DRAW_DAYS = new Set([0, 5, 6]);
+  const GOVERNMENT_COUPON = 'government';
+  const MERCHANT_DISCOUNT = 'merchant_discount';
+  const MERCHANT_GIFT = 'merchant_gift';
 
   const macauFormatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: MACAU_TIME_ZONE,
@@ -105,6 +108,9 @@
           id: `${entryId}-coupon-${amount}-${i}`,
           entryId,
           amount,
+          type: GOVERNMENT_COUPON,
+          faceValue: amount,
+          threshold: amount * 3,
           platform,
           drawDate,
           expiryDate,
@@ -128,16 +134,98 @@
     };
   }
 
+  function getCouponType(coupon) {
+    if (!coupon || typeof coupon !== 'object') return GOVERNMENT_COUPON;
+    if ([GOVERNMENT_COUPON, MERCHANT_DISCOUNT, MERCHANT_GIFT].includes(coupon.type)) return coupon.type;
+    return GOVERNMENT_COUPON;
+  }
+
+  function getCouponStatus(coupon, now = new Date()) {
+    if (!coupon || typeof coupon !== 'object') return 'unknown';
+    if (coupon.status === 'used') return 'used';
+    if (coupon.status === 'expired') return 'expired';
+    if (coupon.expiryDate) {
+      const expiry = new Date(coupon.expiryDate);
+      if (!Number.isNaN(expiry.getTime()) && expiry < now) return 'expired';
+    }
+    return coupon.status === 'active' ? 'active' : 'unknown';
+  }
+
+  function buildUsagePlans(coupons, now = new Date()) {
+    const activeGovernment = (Array.isArray(coupons) ? coupons : [])
+      .filter(coupon => getCouponType(coupon) === GOVERNMENT_COUPON && getCouponStatus(coupon, now) === 'active')
+      .filter(coupon => Number(coupon.amount) > 0 && coupon.platform);
+    const wallets = new Map();
+    activeGovernment.forEach(coupon => {
+      if (!wallets.has(coupon.platform)) wallets.set(coupon.platform, []);
+      wallets.get(coupon.platform).push(coupon);
+    });
+
+    const walletGroups = [...wallets.entries()].map(([wallet, walletCoupons]) => {
+      const ordered = [...walletCoupons].sort((a, b) => Number(b.amount) - Number(a.amount));
+      const faceValue = ordered.reduce((sum, coupon) => sum + Number(coupon.amount), 0);
+      return {
+        wallet,
+        coupons: ordered,
+        faceValue,
+        requiredSpend: faceValue * 3,
+        outOfPocket: faceValue * 2
+      };
+    }).sort((a, b) => b.faceValue - a.faceValue || a.wallet.localeCompare(b.wallet));
+
+    const totals = walletGroups.reduce((result, group) => ({
+      faceValue: result.faceValue + group.faceValue,
+      requiredSpend: result.requiredSpend + group.requiredSpend,
+      outOfPocket: result.outOfPocket + group.outOfPocket
+    }), { faceValue: 0, requiredSpend: 0, outOfPocket: 0 });
+
+    const byWallet = {
+      id: 'by-wallet',
+      title: '每個錢包一次用完',
+      transactionCount: walletGroups.length,
+      transactions: walletGroups.map(group => ({ ...group })),
+      ...totals
+    };
+    const oneByOneTransactions = walletGroups.flatMap(group => group.coupons.map(coupon => ({
+      wallet: group.wallet,
+      coupons: [coupon],
+      faceValue: Number(coupon.amount),
+      requiredSpend: Number(coupon.amount) * 3,
+      outOfPocket: Number(coupon.amount) * 2
+    })));
+    const oneByOne = {
+      id: 'one-by-one',
+      title: '每張券分開一次',
+      transactionCount: oneByOneTransactions.length,
+      transactions: oneByOneTransactions,
+      ...totals
+    };
+    return { walletGroups, totals, options: walletGroups.length ? [byWallet, oneByOne] : [] };
+  }
+
+  function isMerchantOfferEligibleForAutoPlan(offer) {
+    if (!offer || getCouponStatus(offer) !== 'active') return false;
+    if (![MERCHANT_DISCOUNT, MERCHANT_GIFT].includes(getCouponType(offer))) return false;
+    return offer.termsVerified === true && offer.stackability === 'verified';
+  }
+
   return {
     MACAU_TIME_ZONE,
     CAMPAIGN_START,
     CAMPAIGN_END,
+    GOVERNMENT_COUPON,
+    MERCHANT_DISCOUNT,
+    MERCHANT_GIFT,
     getMacauDateKey,
     isDrawDate,
     getMostRecentDrawDate,
     getDrawPeriodStart,
     getExpiryISOString,
     validateBackfillDate,
-    commitDrawEntry
+    commitDrawEntry,
+    getCouponType,
+    getCouponStatus,
+    buildUsagePlans,
+    isMerchantOfferEligibleForAutoPlan
   };
 });

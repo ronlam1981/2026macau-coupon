@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-HK">
+<head><meta charset="utf-8"><title>CouponCore browser tests</title></head>
+<body>
+  <h1>CouponCore browser tests</h1>
+  <ol id="results"></ol>
+  <p id="summary">Running…</p>
+  <script src="../coupon-core.js"></script>
+  <script>
+    const cases = [];
+    function check(name, assertion) {
+      cases.push({ name, passed: Boolean(assertion) });
+    }
+
+    const fixture = [
+      { id: 'a10', amount: 10, platform: 'Wallet A', status: 'active' },
+      { id: 'b20', amount: 20, platform: 'Wallet B', status: 'active' },
+      { id: 'a50', amount: 50, platform: 'Wallet A', status: 'active' },
+      { id: 'used', amount: 200, platform: 'Wallet A', status: 'used' }
+    ];
+    const plan = CouponCore.buildUsagePlans(fixture, new Date('2026-10-15T00:00:00Z'));
+    check('total required spend is face value × 3', plan.totals.requiredSpend === 240);
+    check('total out-of-pocket is face value × 2', plan.totals.outOfPocket === 160);
+    check('wallets remain separate', plan.options[0].transactionCount === 2);
+    check('larger denomination is first', plan.options[0].transactions[0].coupons.map(c => c.amount).join(',') === '50,10');
+    check('one-by-one option has one transaction per coupon', plan.options[1].transactionCount === 3);
+    check('unknown merchant stacking is excluded', CouponCore.isMerchantOfferEligibleForAutoPlan({ type: 'merchant_discount', status: 'active', termsVerified: false, stackability: 'unknown' }) === false);
+
+    const results = document.getElementById('results');
+    cases.forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = `${item.passed ? 'PASS' : 'FAIL'} — ${item.name}`;
+      results.appendChild(li);
+    });
+    const passed = cases.filter(item => item.passed).length;
+    document.getElementById('summary').textContent = `${passed}/${cases.length} passed`;
+    document.body.dataset.passed = String(passed === cases.length);
+  </script>
+</body>
+</html>
