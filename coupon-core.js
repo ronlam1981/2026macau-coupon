@@ -63,6 +63,17 @@
     return null;
   }
 
+  function getMacauTemporalState(now) {
+    const safeNow = now instanceof Date && !Number.isNaN(now.getTime()) ? now : new Date();
+    const dateKey = getMacauDateKey(safeNow);
+    return {
+      dateKey,
+      isDrawDay: isDrawDate(dateKey),
+      suggestedDrawDate: getMostRecentDrawDate(safeNow) || dateKey,
+      campaignStatus: dateKey < CAMPAIGN_START ? 'upcoming' : dateKey > CAMPAIGN_END ? 'ended' : 'active'
+    };
+  }
+
   function getDrawPeriodStart(dateKey) {
     const weekday = getMacauWeekday(dateKey);
     if (!DRAW_DAYS.has(weekday)) return null;
@@ -219,6 +230,7 @@
     getMacauDateKey,
     isDrawDate,
     getMostRecentDrawDate,
+    getMacauTemporalState,
     getDrawPeriodStart,
     getExpiryISOString,
     validateBackfillDate,

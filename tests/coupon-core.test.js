@@ -63,6 +63,37 @@ test('invalid or future backfill dates are rejected', () => {
   assert.match(core.validateBackfillDate('2026-10-16', monday), /唔可以遲過/);
 });
 
+test('Macau Thursday-to-Friday midnight changes draw-day state', () => {
+  const before = core.getMacauTemporalState(new Date('2026-10-15T15:59:59.999Z'));
+  const after = core.getMacauTemporalState(new Date('2026-10-15T16:00:00.000Z'));
+  assert.deepEqual(before, {
+    dateKey: '2026-10-15',
+    isDrawDay: false,
+    suggestedDrawDate: '2026-10-11',
+    campaignStatus: 'active'
+  });
+  assert.deepEqual(after, {
+    dateKey: '2026-10-16',
+    isDrawDay: true,
+    suggestedDrawDate: '2026-10-16',
+    campaignStatus: 'active'
+  });
+});
+
+test('Macau Sunday-to-Monday midnight returns to backfill mode', () => {
+  const before = core.getMacauTemporalState(new Date('2026-10-18T15:59:59.999Z'));
+  const after = core.getMacauTemporalState(new Date('2026-10-18T16:00:00.000Z'));
+  assert.equal(before.dateKey, '2026-10-18');
+  assert.equal(before.isDrawDay, true);
+  assert.equal(after.dateKey, '2026-10-19');
+  assert.equal(after.isDrawDay, false);
+  assert.equal(after.suggestedDrawDate, '2026-10-18');
+});
+
+test('Friday coupon expires at the end of the following Macau Thursday', () => {
+  assert.equal(core.getExpiryISOString('2026-10-16'), '2026-10-22T15:59:59.999Z');
+});
+
 test('usage plans keep wallets separate, use larger coupons first and show spend and self-pay', () => {
   const coupons = [
     { id: 'a10', amount: 10, platform: 'Wallet A', status: 'active' },

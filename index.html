@@ -885,7 +885,7 @@
   </div>
 
   <script>
-    const { createApp, ref, computed, onMounted, watch } = Vue;
+    const { createApp, ref, computed, onMounted, onBeforeUnmount, watch } = Vue;
 
     // 定義 LocalStorage 鍵值及常數
     // 新一輪與春季版在相同網域運行；不可共用舊版儲存鍵。
@@ -916,10 +916,12 @@
         const showUrgentAlert = ref(false);
         const lastRemindedHour = ref(localStorage.getItem(STORAGE_KEY_REMINDER) || null);
         const todayString = ref('');
+        const initialTemporalState = CouponCore.getMacauTemporalState(new Date());
+        const macauToday = ref(initialTemporalState.dateKey);
+        const selectedDrawDate = ref(initialTemporalState.suggestedDrawDate);
         const campaignStatus = computed(() => {
-          const now = new Date();
-          if (now < new Date(2026, 9, 9)) return '即將開始';
-          if (now >= new Date(2026, 11, 18)) return '已結束';
+          if (macauToday.value < CouponCore.CAMPAIGN_START) return '即將開始';
+          if (macauToday.value > CouponCore.CAMPAIGN_END) return '已結束';
           return '進行中';
         });
 
@@ -929,9 +931,8 @@
         const noWinCount = ref(0);
         const errorMsg = ref('');
         const showSettings = ref(false);
-        const macauToday = ref(CouponCore.getMacauDateKey(new Date()));
-        const selectedDrawDate = ref(CouponCore.getMostRecentDrawDate(new Date()) || macauToday.value);
         const isTodayDrawDay = computed(() => CouponCore.isDrawDate(macauToday.value));
+        let temporalRefreshTimer = null;
 
         const selectedCouponIds = ref([]);
         const spendAmount = ref('');
@@ -998,15 +999,41 @@
         }, { deep: true });
 
         // 初始化
+        const refreshTemporalState = (now = new Date()) => {
+          const state = CouponCore.getMacauTemporalState(now);
+          const dateChanged = state.dateKey !== macauToday.value;
+          macauToday.value = state.dateKey;
+          todayString.value = now.toLocaleDateString('zh-HK', {
+            timeZone: CouponCore.MACAU_TIME_ZONE,
+            year: 'numeric',
+            month: 'numeric',
+            day: 'numeric',
+            weekday: 'long'
+          });
+          // Only reset the backfill suggestion after a real Macau calendar-day change.
+          // Focus/minute refreshes on the same day must preserve a user's manual selection.
+          if (dateChanged) selectedDrawDate.value = state.suggestedDrawDate;
+          checkExpiryAndReminders(now);
+        };
+
+        const refreshAfterResume = () => refreshTemporalState(new Date());
+        const refreshWhenVisible = () => {
+          if (!document.hidden) refreshAfterResume();
+        };
+
         onMounted(() => {
-          const today = new Date();
-          const options = { year: 'numeric', month: 'numeric', day: 'numeric', weekday: 'long' };
-          todayString.value = today.toLocaleDateString('zh-HK', options);
-          macauToday.value = CouponCore.getMacauDateKey(today);
-          selectedDrawDate.value = CouponCore.getMostRecentDrawDate(today) || macauToday.value;
-          
-          checkExpiryAndReminders();
-          setInterval(checkExpiryAndReminders, 60000); // 每分鐘背景檢查
+          refreshTemporalState(new Date());
+          temporalRefreshTimer = setInterval(refreshAfterResume, 60000);
+          document.addEventListener('visibilitychange', refreshWhenVisible);
+          window.addEventListener('pageshow', refreshAfterResume);
+          window.addEventListener('focus', refreshAfterResume);
+        });
+
+        onBeforeUnmount(() => {
+          if (temporalRefreshTimer) clearInterval(temporalRefreshTimer);
+          document.removeEventListener('visibilitychange', refreshWhenVisible);
+          window.removeEventListener('pageshow', refreshAfterResume);
+          window.removeEventListener('focus', refreshAfterResume);
         });
 
         // 計算屬性
@@ -1384,8 +1411,7 @@
         };
 
         // 自動過期及計時器提醒
-        const checkExpiryAndReminders = () => {
-          const now = new Date();
+        const checkExpiryAndReminders = (now = new Date()) => {
           let hasExpired = false;
           const expiredThisRound = [];
 

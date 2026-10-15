@@ -25,6 +25,14 @@
     check('larger denomination is first', plan.options[0].transactions[0].coupons.map(c => c.amount).join(',') === '50,10');
     check('one-by-one option has one transaction per coupon', plan.options[1].transactionCount === 3);
     check('unknown merchant stacking is excluded', CouponCore.isMerchantOfferEligibleForAutoPlan({ type: 'merchant_discount', status: 'active', termsVerified: false, stackability: 'unknown' }) === false);
+    const thursday = CouponCore.getMacauTemporalState(new Date('2026-10-15T15:59:59.999Z'));
+    const friday = CouponCore.getMacauTemporalState(new Date('2026-10-15T16:00:00.000Z'));
+    check('Macau midnight changes Thursday to Friday', thursday.dateKey === '2026-10-15' && friday.dateKey === '2026-10-16');
+    check('Friday becomes a draw day after Macau midnight', thursday.isDrawDay === false && friday.isDrawDay === true);
+    const sunday = CouponCore.getMacauTemporalState(new Date('2026-10-18T15:59:59.999Z'));
+    const monday = CouponCore.getMacauTemporalState(new Date('2026-10-18T16:00:00.000Z'));
+    check('Monday resumes backfill suggestion from Sunday', sunday.isDrawDay === true && monday.isDrawDay === false && monday.suggestedDrawDate === '2026-10-18');
+    check('Friday coupon expires following Thursday in Macau', CouponCore.getExpiryISOString('2026-10-16') === '2026-10-22T15:59:59.999Z');
 
     const results = document.getElementById('results');
     cases.forEach(item => {
