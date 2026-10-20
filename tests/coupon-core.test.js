@@ -123,3 +123,72 @@ test('unknown merchant terms are excluded from automatic optimisation', () => {
   assert.equal(core.isMerchantOfferEligibleForAutoPlan({ type: 'merchant_discount', status: 'active', termsVerified: false, stackability: 'unknown' }), false);
   assert.equal(core.isMerchantOfferEligibleForAutoPlan({ type: 'merchant_gift', status: 'active', termsVerified: true, stackability: 'verified' }), true);
 });
+
+test('merchant count registration validates quantity and dates without inventing terms', () => {
+  for (const quantity of [0, -1, 1.5, '', 'abc', 10000, Infinity]) {
+    assert.throws(() => core.createMerchantBatch({type:'merchant_discount', quantity}));
+  }
+  assert.throws(() => core.createMerchantBatch({type:'government', quantity:1}));
+  assert.throws(() => core.createMerchantBatch({type:'merchant_gift', quantity:1, drawDateKey:'2026-02-30'}));
+  const batch = core.createMerchantBatch({type:'merchant_gift', quantity:'3', id:'batch', drawDateKey:'2026-10-16', now:new Date('2026-10-20T00:00:00Z')});
+  assert.equal(batch.expiryDate, '2026-10-22T15:59:59.999Z');
+  assert.equal(batch.merchant, undefined);
+  assert.equal(batch.benefit, undefined);
+  assert.equal(batch.termsVerified, false);
+  assert.deepEqual(core.getMerchantCounts(batch), {quantity:3, used:0, remaining:3});
+  assert.throws(() => core.createMerchantBatch({type:'merchant_discount', quantity:2}));
+});
+
+test('partial use, full use and undo preserve quantity and legacy details', () => {
+  const now = new Date('2026-10-20T00:00:00Z');
+  const original = core.createMerchantBatch({type:'merchant_discount', quantity:2, id:'new', drawDateKey:'2026-10-16', now:new Date('2026-10-20T00:00:00Z')});
+  const partial = core.changeMerchantUsage(original,1,now);
+  assert.equal(original.usedCount,0);
+  assert.deepEqual(core.getMerchantCounts(partial),{quantity:2,used:1,remaining:1});
+  const used=core.changeMerchantUsage(partial,1,now);
+  assert.equal(used.status,'used');
+  assert.equal(core.changeMerchantUsage(used,1,now),used);
+  assert.equal(core.changeMerchantUsage(used,-1,now).status,'active');
+  const legacy={id:'old',type:'merchant_gift',merchant:'舊商戶',benefit:'舊禮遇',terms:'舊條款',status:'used',expiryDate:'2026-10-22T15:59:59.999Z'};
+  assert.deepEqual(core.getMerchantCounts(legacy),{quantity:1,used:1,remaining:0});
+  const undone=core.changeMerchantUsage(legacy,-1,now);
+  assert.equal(undone.merchant,legacy.merchant);
+  assert.equal(undone.benefit,legacy.benefit);
+  assert.equal(undone.terms,legacy.terms);
+  assert.equal(undone.expiryDate,legacy.expiryDate);
+  assert.equal(legacy.status,'used');
+});
+
+test('expired batches cannot be consumed; undo retains expiry and government plans exclude batches', () => {
+  const now=new Date('2026-10-23T00:00:00Z');
+  const expired={id:'expired',type:'merchant_discount',quantity:3,usedCount:1,status:'active',expiryDate:'2026-10-22T15:59:59.999Z'};
+  assert.equal(core.changeMerchantUsage(expired,1,now),expired);
+  const undone=core.changeMerchantUsage(expired,-1,now);
+  assert.equal(core.getCouponStatus(undone,now),'expired');
+  assert.equal(core.getMerchantCounts(undone).used,0);
+  const government={id:'gov',amount:20,platform:'Wallet A',status:'active'};
+  assert.equal(core.changeMerchantUsage(government,1,now),government);
+  const records=[government,expired,core.createMerchantBatch({type:'merchant_gift',quantity:5,drawDateKey:'2026-10-16',now})];
+  const before=JSON.stringify(records);
+  assert.equal(core.buildUsagePlans(records,now).totals.faceValue,20);
+  assert.equal(JSON.stringify(records),before);
+});
+
+
+test('merchant batches share government expiry across Thursday, Friday and backfill boundaries', () => {
+  for (const type of ['merchant_discount', 'merchant_gift']) {
+    const thursday=new Date('2026-10-15T15:59:59.999Z');
+    const friday=new Date('2026-10-15T16:00:00Z');
+    assert.throws(() => core.createMerchantBatch({type,quantity:1,drawDateKey:'2026-10-15',now:thursday}));
+    assert.throws(() => core.createMerchantBatch({type,quantity:1,drawDateKey:'2026-10-16',now:thursday}));
+    const next=core.createMerchantBatch({type,quantity:2,drawDateKey:'2026-10-16',now:friday});
+    assert.equal(next.expiryDate,core.getExpiryISOString('2026-10-16'));
+    assert.equal(next.expiryDate,'2026-10-22T15:59:59.999Z');
+    const backfill=core.createMerchantBatch({type,quantity:3,drawDateKey:'2026-10-11',now:thursday});
+    assert.equal(backfill.expiryDate,'2026-10-15T15:59:59.999Z');
+    assert.equal(core.getCouponStatus(backfill,thursday),'active');
+    assert.equal(core.getCouponStatus(backfill,friday),'expired');
+    assert.throws(() => core.createMerchantBatch({type,quantity:1,drawDateKey:'2026-10-08',now:friday}));
+    assert.throws(() => core.createMerchantBatch({type,quantity:1,drawDateKey:'2026-12-18',now:new Date('2026-12-20')}));
+  }
+});

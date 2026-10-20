@@ -200,6 +200,7 @@
             <h3 class="text-base font-bold text-gray-800">商戶滿減券／禮遇券</h3>
             <span class="text-[10px] text-gray-500">不納入政府券自動計算</span>
           </div>
+          <a href="https://rewards.dsedt.gov.mo/#/website/merchant/index?g=915550" target="_blank" rel="noopener noreferrer" class="inline-block text-sm font-bold text-violet-700 underline py-2">官方商戶清單及優惠詳情 ↗</a><p class="text-xs text-gray-500">可按商戶搜尋優惠；完整條款請點「查看更多」，以官方及券面資料為準。</p>
           <div v-if="merchantOffers.length === 0" class="rounded-2xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
             尚未記錄商戶優惠。未知條款或疊加規則不會當成可用折扣。
           </div>
@@ -207,14 +208,18 @@
             <div class="flex items-start justify-between gap-2">
               <div>
                 <span class="text-[10px] font-bold text-violet-700 bg-violet-50 rounded-full px-2 py-1">{{ offer.type === 'merchant_discount' ? '商戶滿減券' : '消費禮遇券' }}</span>
-                <h4 class="font-bold text-gray-900 mt-2">{{ offer.merchant || '商戶未填' }}</h4>
+                <h4 class="font-bold text-gray-900 mt-2">{{ merchantCounts(offer).quantity }} 張<span v-if="offer.merchant" class="text-sm font-normal"> · {{ offer.merchant }}</span></h4>
               </div>
               <span class="text-xs font-bold" :class="offerStatus(offer).className">{{ offerStatus(offer).label }}</span>
             </div>
-            <p class="text-sm text-gray-700">{{ offer.benefit || '優惠內容未填' }}</p>
-            <p class="text-xs text-gray-500">門檻：{{ offer.threshold ? '滿 MOP ' + offer.threshold : '依商戶條款' }} · 有效期至 {{ formatDate(offer.expiryDate) }}</p>
+            <p class="text-sm text-gray-700">已用 {{ merchantCounts(offer).used }} 張 · 未用 {{ merchantCounts(offer).remaining }} 張<span v-if="offer.benefit"> · {{ offer.benefit }}</span></p>
+            <p class="text-xs text-gray-500">門檻：{{ offer.threshold ? '滿 MOP ' + offer.threshold : '依商戶條款' }} · 有效期至 {{ offer.expiryDate ? formatDate(offer.expiryDate) : '未填（請按券面確認）' }}</p>
             <p class="text-xs text-gray-500">條款：{{ offer.terms || '尚未核實，付款前向商戶確認' }}</p>
             <p class="text-[11px] text-amber-700">{{ offer.stackability === 'verified' ? '疊加方式已按所填條款核實' : '疊加方式未知；已排除自動最優計算' }}</p>
+            <div class="flex gap-2 pt-2">
+              <button v-if="canUseMerchant(offer)" @click="changeMerchantUsage(offer, 1)" class="rounded-lg bg-violet-600 text-white px-3 py-2 text-xs">記錄已用 1 張</button>
+              <button v-if="merchantCounts(offer).used > 0" @click="changeMerchantUsage(offer, -1)" class="rounded-lg border border-gray-200 px-3 py-2 text-xs">撤回已用 1 張</button>
+            </div>
           </div>
         </section>
       </div>
@@ -386,16 +391,11 @@
           <details class="bg-white border border-violet-100 rounded-2xl p-4 shadow-sm">
             <summary class="font-bold text-violet-800 cursor-pointer">另記抽中的商戶券／禮遇券</summary>
             <div class="mt-4 space-y-3">
-              <select v-model="merchantForm.type" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm">
-                <option value="merchant_discount">商戶滿減券</option>
-                <option value="merchant_gift">消費禮遇券（贈品）</option>
-              </select>
-              <input v-model.trim="merchantForm.merchant" placeholder="商戶名稱" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" />
-              <input v-model.trim="merchantForm.benefit" placeholder="優惠內容，例如：滿 100 減 12／贈送禮品" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" />
-              <input v-model="merchantForm.threshold" type="number" min="0" placeholder="消費門檻（未知可留空）" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" />
-              <input v-model="merchantForm.expiryDate" type="date" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" />
-              <textarea v-model.trim="merchantForm.terms" placeholder="已知條款；未知可留空" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm"></textarea>
-              <p class="text-[11px] text-amber-700">禮遇券是贈品，不計入節省金額；未知疊加條款一律不作可疊加處理。</p>
+              <label class="block text-sm">商戶滿減券張數<input v-model="merchantForm.discountCount" aria-label="商戶滿減券張數" type="number" min="0" max="9999" step="1" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" /></label>
+              <label class="block text-sm">消費禮遇券張數<input v-model="merchantForm.giftCount" aria-label="消費禮遇券張數" type="number" min="0" max="9999" step="1" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" /></label>
+              <p class="text-xs text-gray-500">沿用上方實際領券日期，與政府金額券同一期，到下周四屆滿；補記時請先在上方選擇日期，保存前會顯示日期及期限。</p>
+              <a href="https://rewards.dsedt.gov.mo/#/website/merchant/index?g=915550" target="_blank" rel="noopener noreferrer" class="inline-block text-sm font-bold text-violet-700 underline py-2">官方商戶清單及優惠詳情 ↗</a><p class="text-xs text-gray-500">可按商戶搜尋優惠；完整條款請點「查看更多」，以官方及券面資料為準。</p>
+              <p class="text-[11px] text-amber-700">商戶券不納入政府券節省計算；各商戶優惠及疊加規則請查閱官方詳情。</p>
               <p v-if="merchantError" class="text-xs font-bold text-red-600">{{ merchantError }}</p>
               <button @click="saveMerchantOffer" class="w-full rounded-xl bg-violet-600 py-3 text-sm font-bold text-white">保存商戶優惠記錄</button>
             </div>
@@ -944,14 +944,7 @@
         const suggestPlan = ref([]);
         const selectedPlanId = ref('by-wallet');
         const merchantError = ref('');
-        const merchantForm = ref({
-          type: CouponCore.MERCHANT_DISCOUNT,
-          merchant: '',
-          benefit: '',
-          threshold: '',
-          expiryDate: '',
-          terms: ''
-        });
+        const merchantForm = ref({ discountCount: 0, giftCount: 0 });
 
         // 載入 localStorage 資料 (高度防禦性解析)
         const coupons = ref([]);
@@ -1157,39 +1150,43 @@
           const status = CouponCore.getCouponStatus(offer);
           if (status === 'used') return { label: '已用', className: 'text-gray-500' };
           if (status === 'expired') return { label: '過期', className: 'text-red-600' };
+          if (status === 'active' && CouponCore.getMerchantCounts(offer).used > 0) return { label: '部分已用', className: 'text-emerald-600' };
           if (status === 'active') return { label: '未用', className: 'text-emerald-600' };
           return { label: '狀態未知', className: 'text-amber-600' };
         };
 
+        const merchantCounts = CouponCore.getMerchantCounts;
+        const changeMerchantUsage = (offer, delta) => {
+          const updated = CouponCore.changeMerchantUsage(offer, delta);
+          if (updated === offer) return;
+          coupons.value = coupons.value.map(c => c === offer ? updated : c);
+          addLog('merchant-offer', (delta > 0 ? '記錄已用' : '撤回已用') + ' 1 張' + (offer.type === CouponCore.MERCHANT_DISCOUNT ? '商戶滿減券' : '消費禮遇券'));
+        };
         const saveMerchantOffer = () => {
-          const form = merchantForm.value;
-          if (!form.merchant || !form.benefit || !form.expiryDate) {
-            merchantError.value = '請填商戶、優惠內容及有效期。';
-            return;
-          }
-          const expiry = new Date(`${form.expiryDate}T23:59:59.999+08:00`);
-          if (Number.isNaN(expiry.getTime())) {
-            merchantError.value = '有效期格式不正確。';
-            return;
-          }
-          const offer = {
-            id: `merchant-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-            type: form.type,
-            merchant: form.merchant,
-            benefit: form.benefit,
-            threshold: form.threshold === '' ? null : Number(form.threshold),
-            expiryDate: expiry.toISOString(),
-            terms: form.terms,
-            termsVerified: Boolean(form.terms),
-            stackability: 'unknown',
-            status: 'active',
-            recordedAt: new Date().toISOString()
-          };
-          coupons.value = [...coupons.value, offer];
-          addLog('merchant-offer', `記錄${form.type === CouponCore.MERCHANT_DISCOUNT ? '商戶滿減券' : '消費禮遇券'}：${form.merchant}（${form.benefit}）`);
-          merchantForm.value = { type: CouponCore.MERCHANT_DISCOUNT, merchant: '', benefit: '', threshold: '', expiryDate: '', terms: '' };
-          merchantError.value = '';
-          activeTab.value = 'home';
+          try {
+            const now = new Date();
+            const temporal = CouponCore.getMacauTemporalState(now);
+            const drawDateKey = temporal.isDrawDay ? temporal.dateKey : selectedDrawDate.value;
+            const counts = [Number(merchantForm.value.discountCount), Number(merchantForm.value.giftCount)];
+            if (counts.some(n => !Number.isSafeInteger(n) || n < 0 || n > 9999) || counts.every(n => n === 0)) throw new Error('請選擇至少 1 張；每類張數須為 0 至 9999 的整數。');
+            const types = [CouponCore.MERCHANT_DISCOUNT, CouponCore.MERCHANT_GIFT];
+            const offers = counts.flatMap((quantity, i) => quantity ? [CouponCore.createMerchantBatch({ type: types[i], quantity, drawDateKey, now, id: 'merchant-' + Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2) })] : []);
+            merchantError.value = '';
+            confirmDialog.value = {
+              title: temporal.isDrawDay ? '確認新增商戶券記錄？' : '再次確認補登商戶券？',
+              content: (temporal.isDrawDay ? '' : '⚠️ 非領券日補登，只更新個人記錄。\n\n') + '實際領券日期：' + drawDateKey + '\n所屬期數：' + CouponCore.getDrawPeriodStart(drawDateKey) + ' 起\n券到期日：' + CouponCore.getMacauDateKey(new Date(offers[0].expiryDate)) + '（澳門時間）\n\n商戶滿減券：' + counts[0] + ' 張\n消費禮遇券：' + counts[1] + ' 張',
+              isDestructive: false,
+              onConfirm: () => {
+                if (!offers.some(offer => coupons.value.some(c => c && c.id === offer.id))) {
+                  coupons.value = [...coupons.value, ...offers];
+                  addLog('merchant-offer', '領券日期 ' + drawDateKey + '：商戶滿減券 ' + counts[0] + ' 張、消費禮遇券 ' + counts[1] + ' 張');
+                }
+                merchantForm.value = { discountCount: 0, giftCount: 0 };
+                confirmDialog.value = null;
+                activeTab.value = 'home';
+              }
+            };
+          } catch (error) { merchantError.value = error.message; }
         };
 
         const handlePreSave = () => {
@@ -1572,6 +1569,9 @@
           suggestMode,
           suggestPlan,
           selectedPlanId,
+          canUseMerchant: offer => CouponCore.getCouponStatus(offer) === 'active' && CouponCore.getMerchantCounts(offer).remaining > 0,
+          merchantCounts,
+          changeMerchantUsage,
           merchantForm,
           merchantError,
           ALL_PLATFORMS,

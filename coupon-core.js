@@ -214,6 +214,33 @@
     return { walletGroups, totals, options: walletGroups.length ? [byWallet, oneByOne] : [] };
   }
 
+  function getMerchantCounts(offer) {
+    const quantity = Number.isSafeInteger(offer.quantity) && offer.quantity > 0 ? offer.quantity : 1;
+    const used = offer.status === 'used' ? quantity
+      : Math.min(quantity, Math.max(0, Number.isSafeInteger(offer.usedCount) ? offer.usedCount : 0));
+    return { quantity, used, remaining: quantity - used };
+  }
+
+  function createMerchantBatch({ type, quantity, drawDateKey, id, now = new Date() }) {
+    if (![MERCHANT_DISCOUNT, MERCHANT_GIFT].includes(type)) throw new Error('請選擇商戶券分類。');
+    const count = Number(quantity);
+    if (!Number.isSafeInteger(count) || count < 1 || count > 9999) throw new Error('張數須為 1 至 9999 的整數。');
+    const dateError = validateBackfillDate(drawDateKey, now);
+    if (dateError) throw new Error(dateError);
+    const expiryDate = getExpiryISOString(drawDateKey);
+    return { id, type, quantity: count, usedCount: 0, expiryDate, drawDate: parseDateKey(drawDateKey).toISOString(),
+      status: 'active', termsVerified: false, stackability: 'unknown', recordedAt: now.toISOString() };
+  }
+
+  function changeMerchantUsage(offer, delta, now = new Date()) {
+    if (![MERCHANT_DISCOUNT, MERCHANT_GIFT].includes(getCouponType(offer)) || ![1, -1].includes(delta)) return offer;
+    const counts = getMerchantCounts(offer);
+    if (delta === 1 && (getCouponStatus(offer, now) !== 'active' || counts.remaining === 0)) return offer;
+    if (delta === -1 && counts.used === 0) return offer;
+    const usedCount = counts.used + delta;
+    return { ...offer, usedCount, status: usedCount === counts.quantity ? 'used' : offer.status === 'expired' ? 'expired' : 'active' };
+  }
+
   function isMerchantOfferEligibleForAutoPlan(offer) {
     if (!offer || getCouponStatus(offer) !== 'active') return false;
     if (![MERCHANT_DISCOUNT, MERCHANT_GIFT].includes(getCouponType(offer))) return false;
@@ -238,6 +265,9 @@
     getCouponType,
     getCouponStatus,
     buildUsagePlans,
+    getMerchantCounts,
+    createMerchantBatch,
+    changeMerchantUsage,
     isMerchantOfferEligibleForAutoPlan
   };
 });
