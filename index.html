@@ -217,8 +217,7 @@
             <p class="text-xs text-gray-500">條款：{{ offer.terms || '尚未核實，付款前向商戶確認' }}</p>
             <p class="text-[11px] text-amber-700">{{ offer.stackability === 'verified' ? '疊加方式已按所填條款核實' : '疊加方式未知；已排除自動最優計算' }}</p>
             <div class="flex gap-2 pt-2">
-              <button v-if="canUseMerchant(offer)" @click="changeMerchantUsage(offer, 1)" class="rounded-lg bg-violet-600 text-white px-3 py-2 text-xs">記錄已用 1 張</button>
-              <button v-if="merchantCounts(offer).used > 0" @click="changeMerchantUsage(offer, -1)" class="rounded-lg border border-gray-200 px-3 py-2 text-xs">撤回已用 1 張</button>
+              <button v-if="canUseMerchant(offer)" @click="confirmMerchantRedemption(offer)" class="rounded-lg bg-violet-600 text-white px-3 py-2 text-xs">核消 1 張</button>
             </div>
           </div>
         </section>
@@ -676,7 +675,7 @@
                       :class="log.type === 'expired' ? 'bg-red-50 text-red-600' : (log.type === 'draw' && log.desc.includes('未有中獎')) ? 'bg-gray-100 text-gray-600' : log.type === 'draw' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'">
                   {{ log.type === 'expired' ? '已過期' : log.type === 'draw' ? '抽券' : '核銷' }}
                 </span>
-                <time class="text-[10px] text-gray-400">{{ formatDate(log.type === 'draw' && log.drawDate ? log.drawDate : log.date) }}</time>
+                <time class="text-[10px] text-gray-400">{{ log.couponType ? new Date(log.date).toLocaleString('zh-HK', { timeZone: 'Asia/Macau', hour12: false }) : formatDate(log.type === 'draw' && log.drawDate ? log.drawDate : log.date) }}</time>
               </div>
               <p class="text-sm font-medium mt-2 leading-relaxed" :class="log.type === 'expired' ? 'text-red-700' : 'text-gray-700'">
                 {{ log.desc }}
@@ -1035,7 +1034,7 @@
           c && CouponCore.getCouponType(c) === CouponCore.GOVERNMENT_COUPON && CouponCore.getCouponStatus(c) === 'active'
         ));
         const merchantOffers = computed(() => coupons.value.filter(c =>
-          c && [CouponCore.MERCHANT_DISCOUNT, CouponCore.MERCHANT_GIFT].includes(CouponCore.getCouponType(c))
+          c && [CouponCore.MERCHANT_DISCOUNT, CouponCore.MERCHANT_GIFT].includes(CouponCore.getCouponType(c)) && CouponCore.getCouponStatus(c) !== 'used'
         ));
         const usagePlans = computed(() => CouponCore.buildUsagePlans(coupons.value));
         const selectedUsagePlan = computed(() => usagePlans.value.options.find(option => option.id === selectedPlanId.value) || usagePlans.value.options[0] || null);
@@ -1156,11 +1155,25 @@
         };
 
         const merchantCounts = CouponCore.getMerchantCounts;
-        const changeMerchantUsage = (offer, delta) => {
-          const updated = CouponCore.changeMerchantUsage(offer, delta);
-          if (updated === offer) return;
-          coupons.value = coupons.value.map(c => c === offer ? updated : c);
-          addLog('merchant-offer', (delta > 0 ? '記錄已用' : '撤回已用') + ' 1 張' + (offer.type === CouponCore.MERCHANT_DISCOUNT ? '商戶滿減券' : '消費禮遇券'));
+        const confirmMerchantRedemption = (offer) => {
+          const entryId = 'merchant-redeem-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+          const label = offer.type === CouponCore.MERCHANT_DISCOUNT ? '商戶滿減券' : '消費禮遇券';
+          const dialog = {
+            title: '確認核消' + label + ' 1 張？',
+            content: '確認後扣除 1 張，並保存至使用紀錄。',
+            isDestructive: false,
+            onConfirm: () => {
+              if (confirmDialog.value !== dialogProxy) return;
+              confirmDialog.value = null;
+              const result = CouponCore.commitMerchantRedemption({ coupons: coupons.value, logs: logs.value, couponId: offer.id, entryId });
+              if (!result.added) return;
+              coupons.value = result.coupons;
+              logs.value = result.logs;
+              activeTab.value = 'history';
+            }
+          };
+          confirmDialog.value = dialog;
+          const dialogProxy = confirmDialog.value;
         };
         const saveMerchantOffer = () => {
           try {
@@ -1571,7 +1584,7 @@
           selectedPlanId,
           canUseMerchant: offer => CouponCore.getCouponStatus(offer) === 'active' && CouponCore.getMerchantCounts(offer).remaining > 0,
           merchantCounts,
-          changeMerchantUsage,
+          confirmMerchantRedemption,
           merchantForm,
           merchantError,
           ALL_PLATFORMS,

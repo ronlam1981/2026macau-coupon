@@ -241,6 +241,23 @@
     return { ...offer, usedCount, status: usedCount === counts.quantity ? 'used' : offer.status === 'expired' ? 'expired' : 'active' };
   }
 
+  function commitMerchantRedemption({ coupons, logs, couponId, entryId, now = new Date() }) {
+    const unchanged = { coupons, logs, added: false };
+    if (!entryId || logs.some(log => log && log.entryId === entryId)) return unchanged;
+    const offer = coupons.find(c => c && c.id === couponId);
+    if (!offer) return unchanged;
+    const updated = changeMerchantUsage(offer, 1, now);
+    if (updated === offer) return unchanged;
+    const couponType = getCouponType(offer);
+    const label = couponType === MERCHANT_DISCOUNT ? '商戶滿減券' : '消費禮遇券';
+    return {
+      coupons: coupons.map(c => c === offer ? updated : c),
+      logs: [{ id: entryId, entryId, type: 'redeem', couponId, couponType, quantity: 1,
+        date: now.toISOString(), desc: `核消${label} 1 張` }, ...logs],
+      added: true
+    };
+  }
+
   function isMerchantOfferEligibleForAutoPlan(offer) {
     if (!offer || getCouponStatus(offer) !== 'active') return false;
     if (![MERCHANT_DISCOUNT, MERCHANT_GIFT].includes(getCouponType(offer))) return false;
@@ -268,6 +285,7 @@
     getMerchantCounts,
     createMerchantBatch,
     changeMerchantUsage,
+    commitMerchantRedemption,
     isMerchantOfferEligibleForAutoPlan
   };
 });

@@ -192,3 +192,40 @@ test('merchant batches share government expiry across Thursday, Friday and backf
     assert.throws(() => core.createMerchantBatch({type,quantity:1,drawDateKey:'2026-12-18',now:new Date('2026-12-20')}));
   }
 });
+
+test('merchant redemption is atomic, preserves old records and deduplicates confirmation', () => {
+  const now = new Date('2026-10-21T04:00:00Z');
+  for (const type of ['merchant_discount','merchant_gift']) {
+    const original = {id:'offer',type,quantity:2,usedCount:0,status:'active',expiryDate:'2026-10-22T15:59:59.999Z',merchant:'舊商戶',terms:'舊條款'};
+    const coupons=[{id:'gov',amount:50,status:'active'},original];
+    const logs=[{id:'old-log',desc:'舊紀錄'}];
+    const first=core.commitMerchantRedemption({coupons,logs,couponId:'offer',entryId:'confirm-1',now});
+    assert.equal(first.added,true);
+    assert.equal(core.getMerchantCounts(first.coupons[1]).remaining,1);
+    assert.deepEqual(first.coupons[0],coupons[0]);
+    assert.equal(original.usedCount,0);
+    assert.equal(first.coupons[1].merchant,original.merchant);
+    assert.equal(first.coupons[1].expiryDate,original.expiryDate);
+    assert.equal(first.logs[0].couponType,type);
+    assert.equal(first.logs[0].quantity,1);
+    assert.equal(first.logs[0].date,now.toISOString());
+    assert.deepEqual(first.logs[1],logs[0]);
+    const again=core.commitMerchantRedemption({...first,couponId:'offer',entryId:'confirm-1',now});
+    assert.equal(again.added,false);
+    assert.strictEqual(again.coupons,first.coupons);
+    const last=core.commitMerchantRedemption({...first,couponId:'offer',entryId:'confirm-2',now});
+    assert.equal(last.coupons[1].status,'used');
+    assert.equal(core.getMerchantCounts(last.coupons[1]).remaining,0);
+    assert.equal(core.commitMerchantRedemption({...last,couponId:'offer',entryId:'confirm-3',now}).added,false);
+  }
+});
+
+test('expired, missing and government coupons cannot enter merchant redemption', () => {
+  for (const offer of [{id:'x',type:'merchant_gift',status:'expired'},{id:'x',type:'government',status:'active'},null]) {
+    const coupons=[offer],logs=[];
+    const result=core.commitMerchantRedemption({coupons,logs,couponId:'x',entryId:'test'});
+    assert.equal(result.added,false);
+    assert.strictEqual(result.coupons,coupons);
+    assert.strictEqual(result.logs,logs);
+  }
+});
