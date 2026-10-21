@@ -229,3 +229,54 @@ test('expired, missing and government coupons cannot enter merchant redemption',
     assert.strictEqual(result.logs,logs);
   }
 });
+
+test('unified draw saves government and both merchant types with one period and duplicate guard', () => {
+  const input={coupons:[],logs:[],platform:'MPay',drawCounts:{10:1},noWinCount:0,drawDateKey:'2026-10-18',recordedAt:new Date('2026-10-21T04:00:00Z'),entryId:'unified',merchantCounts:{discountCount:2,giftCount:1}};
+  const result=core.commitDrawEntry(input);
+  assert.equal(result.added,true);
+  assert.equal(result.coupons.length,3);
+  assert.ok(result.coupons.every(c => c.platform === 'MPay'));
+  assert.deepEqual(result.coupons.map(c=>c.type),['government','merchant_discount','merchant_gift']);
+  assert.equal(new Set(result.coupons.map(c=>c.expiryDate)).size,1);
+  assert.equal(result.logs.length,1);
+  assert.equal(core.commitDrawEntry({...input,coupons:result.coupons,logs:result.logs}).added,false);
+});
+
+test('unified redemption keeps Apps, legacy fields and structured usage records separate', () => {
+  const now=new Date('2026-10-21T04:00:00Z');
+  const coupons=[
+    {id:'gov',type:'government',platform:'MPay',amount:50,status:'active'},
+    {id:'m',type:'merchant_discount',platform:'MPay',quantity:3,status:'active'},
+    {id:'b',type:'merchant_discount',platform:'BOC',quantity:2,status:'active'},
+    {id:'legacy',type:'merchant_gift',merchant:'Old merchant',terms:'Keep me',status:'active'}
+  ];
+  const original=JSON.stringify(coupons);
+  const logs=[{id:'old-log',type:'draw'}];
+  const result=core.commitRedemption({coupons,logs,couponIds:['gov','m','legacy','m'],entryId:'confirm',now});
+  assert.equal(result.added,true);
+  assert.equal(JSON.stringify(coupons),original);
+  assert.equal(result.coupons[0].status,'used');
+  assert.equal(core.getMerchantCounts(result.coupons[1]).remaining,2);
+  assert.strictEqual(result.coupons[2],coupons[2]);
+  assert.equal(result.coupons[3].status,'used');
+  assert.equal(result.coupons[3].terms,'Keep me');
+  assert.equal(result.coupons[3].platform,undefined);
+  assert.deepEqual(result.logs.slice(0,3).map(l=>l.platform),['MPay','MPay',null]);
+  assert.ok(result.logs.slice(0,3).every(l=>l.quantity===1 && l.date===now.toISOString() && l.couponType));
+  assert.match(result.logs[2].desc,/未指定 App/);
+  assert.strictEqual(result.logs[3],logs[0]);
+  const again=core.commitRedemption({...result,couponIds:['m'],entryId:'confirm',now});
+  assert.equal(again.added,false);
+  assert.strictEqual(again.coupons,result.coupons);
+});
+
+test('unified redemption rejects stale or expired selections atomically at Macau Friday boundary', () => {
+  const expiryDate=core.getExpiryISOString('2026-10-18');
+  const coupons=[{id:'a',type:'merchant_gift',status:'active',quantity:2,expiryDate},{id:'b',type:'government',status:'active',amount:10,expiryDate}];
+  const args={coupons,logs:[],couponIds:['a','b'],entryId:'x'};
+  assert.equal(core.commitRedemption({...args,now:new Date('2026-10-22T15:59:59.999Z')}).added,true);
+  const expired=core.commitRedemption({...args,now:new Date('2026-10-22T16:00:00Z')});
+  assert.equal(expired.added,false);
+  assert.strictEqual(expired.coupons,coupons);
+  assert.equal(core.commitRedemption({...args,couponIds:['a','missing'],now:new Date('2026-10-21T04:00:00Z')}).added,false);
+});

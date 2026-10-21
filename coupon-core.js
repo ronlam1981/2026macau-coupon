@@ -94,7 +94,7 @@
     return '';
   }
 
-  function commitDrawEntry({ coupons, logs, platform, drawCounts, noWinCount, drawDateKey, recordedAt, drawTime, entryId }) {
+  function commitDrawEntry({ coupons, logs, platform, drawCounts, noWinCount, drawDateKey, recordedAt, drawTime, entryId, merchantCounts = {} }) {
     const safeCoupons = Array.isArray(coupons) ? coupons : [];
     const safeLogs = Array.isArray(logs) ? logs : [];
     if (!entryId || safeLogs.some(log => log && log.entryId === entryId) || safeCoupons.some(coupon => coupon && coupon.entryId === entryId)) {
@@ -129,6 +129,15 @@
         });
       }
     });
+    for (const [type, key, label] of [[MERCHANT_DISCOUNT, 'discountCount', '商戶滿減券'], [MERCHANT_GIFT, 'giftCount', '消費禮遇券']]) {
+      const quantity = Number(merchantCounts[key] || 0);
+      if (!Number.isSafeInteger(quantity) || quantity < 0 || quantity > 9999) return { coupons: safeCoupons, logs: safeLogs, added: false };
+      if (quantity > 0) {
+        const offer = createMerchantBatch({ type, quantity, platform, drawDateKey, now: recordedAt, id: entryId + '-' + type });
+        newCoupons.push({ ...offer, entryId });
+        summary.push(quantity + '張' + label);
+      }
+    }
     if (noWinCount > 0) summary.push(`${noWinCount}次未有中獎`);
 
     return {
@@ -221,14 +230,14 @@
     return { quantity, used, remaining: quantity - used };
   }
 
-  function createMerchantBatch({ type, quantity, drawDateKey, id, now = new Date() }) {
+  function createMerchantBatch({ type, quantity, platform, drawDateKey, id, now = new Date() }) {
     if (![MERCHANT_DISCOUNT, MERCHANT_GIFT].includes(type)) throw new Error('請選擇商戶券分類。');
     const count = Number(quantity);
     if (!Number.isSafeInteger(count) || count < 1 || count > 9999) throw new Error('張數須為 1 至 9999 的整數。');
     const dateError = validateBackfillDate(drawDateKey, now);
     if (dateError) throw new Error(dateError);
     const expiryDate = getExpiryISOString(drawDateKey);
-    return { id, type, quantity: count, usedCount: 0, expiryDate, drawDate: parseDateKey(drawDateKey).toISOString(),
+    return { id, type, ...(platform ? { platform } : {}), quantity: count, usedCount: 0, expiryDate, drawDate: parseDateKey(drawDateKey).toISOString(),
       status: 'active', termsVerified: false, stackability: 'unknown', recordedAt: now.toISOString() };
   }
 
@@ -264,6 +273,26 @@
     return offer.termsVerified === true && offer.stackability === 'verified';
   }
 
+  // Record already-used coupons. This does not perform payment or merchant redemption.
+  function commitRedemption({ coupons, logs, couponIds, entryId, now = new Date() }) {
+    const unchanged = { coupons, logs, added: false };
+    if (!entryId || logs.some(log => log.entryId === entryId) || !couponIds.length) return unchanged;
+    const ids = [...new Set(couponIds)];
+    const selected = ids.map(id => coupons.find(c => c.id === id));
+    if (selected.some(c => !c || getCouponStatus(c, now) !== 'active' ||
+      (getCouponType(c) !== GOVERNMENT_COUPON && getMerchantCounts(c).remaining < 1))) return unchanged;
+    const date = now.toISOString();
+    const records = selected.map((c, i) => {
+      const couponType = getCouponType(c);
+      const label = couponType === GOVERNMENT_COUPON ? `政府券 $${c.amount}` : couponType === MERCHANT_DISCOUNT ? '商戶滿減券' : '消費禮遇券';
+      return { id: `${entryId}-${i}`, entryId, type: 'redeem', couponId: c.id, couponType,
+        platform: c.platform || null, quantity: 1, date, desc: `核銷${label} 1 張（${c.platform || '未指定 App'}）` };
+    });
+    return { added: true, logs: [...records, ...logs], coupons: coupons.map(c => !ids.includes(c.id) ? c :
+      getCouponType(c) === GOVERNMENT_COUPON ? { ...c, status: 'used', usedDate: date } :
+      { ...changeMerchantUsage(c, 1, now), usedDate: date }) };
+  }
+
   return {
     MACAU_TIME_ZONE,
     CAMPAIGN_START,
@@ -286,6 +315,7 @@
     createMerchantBatch,
     changeMerchantUsage,
     commitMerchantRedemption,
+    commitRedemption,
     isMerchantOfferEligibleForAutoPlan
   };
 });

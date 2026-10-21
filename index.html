@@ -19,7 +19,7 @@
 <body class="bg-slate-100 min-h-screen">
 
   <div id="app" class="min-h-screen bg-slate-50 font-sans max-w-md mx-auto relative overflow-hidden flex flex-col shadow-2xl pb-16">
-    
+
     <!-- 全局頂部欄 -->
     <header class="bg-white px-5 pt-10 pb-4 shadow-sm sticky top-0 z-10 flex flex-col gap-2">
       <div class="flex justify-between items-center">
@@ -47,7 +47,7 @@
 
     <!-- 主要內容區 -->
     <main class="flex-1 overflow-y-auto">
-      
+
       <!-- ==================== TAB 1: 主頁 (Home) ==================== -->
       <div v-if="activeTab === 'home'" class="p-4 space-y-6">
         <div class="bg-white border border-blue-100 rounded-2xl p-4 text-sm text-gray-700 shadow-sm">
@@ -62,7 +62,7 @@
           <div>
             <h3 class="font-bold text-red-800">溫馨提示：優惠券即將到期！</h3>
             <p class="text-sm text-red-600 mt-1">
-              你有 <span class="font-bold">{{ expiringSoonCount }}</span> 張政府電子優惠將於 <span class="font-bold underline">{{ earliestExpiryDate }}</span> 到期，領券當日至下周四都可以核銷！
+              你有 <span class="font-bold">{{ expiringSoonCount }}</span> 張政府電子優惠將於 <span class="font-bold underline">{{ earliestExpiryDate }}</span> 到期。
             </p>
           </div>
         </div>
@@ -70,56 +70,20 @@
         <!-- 數據卡片 -->
         <div class="grid grid-cols-2 gap-4">
           <div class="bg-gradient-to-br from-blue-500 to-cyan-400 p-5 rounded-3xl text-white shadow-md">
-            <p class="text-blue-100 text-sm font-medium mb-1">可用優惠券總值</p>
+            <p class="text-blue-100 text-sm font-medium mb-1">可用政府券總值</p>
             <div class="flex items-baseline gap-1 mt-1">
               <span class="text-xs font-semibold">MOP</span>
               <span class="text-3xl font-bold">{{ totalValue }}</span>
             </div>
           </div>
           <div class="bg-white border border-gray-100 p-5 rounded-3xl shadow-sm flex flex-col justify-center">
-            <p class="text-gray-500 text-sm font-medium">優惠券數量</p>
+            <p class="text-gray-500 text-sm font-medium">政府券數量</p>
             <div class="flex items-baseline gap-1 mt-1">
               <span class="text-3xl font-bold text-gray-800">{{ activeCoupons.length }}</span>
               <span class="text-gray-500 text-xs font-medium">張喺手</span>
             </div>
           </div>
         </div>
-
-        <!-- 純規劃：不會自動核銷或改動記錄 -->
-        <section v-if="usagePlans.options.length" class="bg-white border border-emerald-100 rounded-3xl p-4 shadow-sm space-y-4">
-          <div>
-            <p class="text-xs font-bold text-emerald-700">用完現有政府券</p>
-            <div class="grid grid-cols-2 gap-3 mt-2">
-              <div class="rounded-2xl bg-emerald-50 p-3">
-                <p class="text-[11px] text-emerald-700">扣政府券前合資格消費</p>
-                <p class="text-xl font-black text-emerald-900">MOP {{ usagePlans.totals.requiredSpend }}</p>
-              </div>
-              <div class="rounded-2xl bg-blue-50 p-3">
-                <p class="text-[11px] text-blue-700">扣券後自付合計</p>
-                <p class="text-xl font-black text-blue-900">MOP {{ usagePlans.totals.outOfPocket }}</p>
-              </div>
-            </div>
-            <p class="text-[11px] text-gray-500 mt-2">只為用券而增加消費未必划算；請按原有需要選方案。不同錢包不可合併核銷。</p>
-          </div>
-
-          <div class="flex gap-2">
-            <button v-for="option in usagePlans.options" :key="option.id" @click="selectedPlanId = option.id"
-              class="flex-1 rounded-xl px-2 py-2 text-xs font-bold"
-              :class="selectedPlanId === option.id ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'">
-              {{ option.title }}（{{ option.transactionCount }} 次）
-            </button>
-          </div>
-          <div v-if="selectedUsagePlan" class="space-y-2">
-            <div v-for="(transaction, index) in selectedUsagePlan.transactions" :key="transaction.wallet + '-' + index" class="rounded-2xl border border-gray-100 bg-gray-50 p-3">
-              <div class="flex justify-between gap-2">
-                <p class="text-sm font-bold text-gray-800">第 {{ index + 1 }} 次 · {{ transaction.wallet }}</p>
-                <span class="text-xs font-bold text-emerald-700">實付 ${{ transaction.outOfPocket }}</span>
-              </div>
-              <p class="text-xs text-gray-600 mt-1">消費 ${{ transaction.requiredSpend }}；用券 {{ transaction.coupons.map(c => '$' + c.amount).join(' + ') }}；扣減 ${{ transaction.faceValue }}</p>
-            </div>
-            <p v-if="selectedUsagePlan.id === 'one-by-one'" class="text-[11px] text-amber-700 bg-amber-50 rounded-xl p-2">這是分次購物方案；若同一次購物要拆單，須先詢問商戶是否接受。</p>
-          </div>
-        </section>
 
         <!-- 持有優惠券列表與排序 -->
         <div>
@@ -128,7 +92,7 @@
               <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
               </svg>
-              目前持有嘅優惠券
+              目前持有嘅政府券
             </h3>
             <button 
               v-if="activeCoupons.length > 0"
@@ -141,12 +105,12 @@
               {{ sortOrder === 'desc' ? '面額：大至細' : '面額：細至大' }}
             </button>
           </div>
-          
+
           <div v-if="activeCoupons.length === 0" class="bg-gray-50 rounded-2xl p-8 text-center border border-dashed border-gray-200">
             <svg class="w-12 h-12 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
             </svg>
-            <p class="text-gray-500">目前未有可用嘅優惠券</p>
+            <p class="text-gray-500">目前未有可用嘅政府券</p>
             <button @click="activeTab = 'draw'" class="mt-4 text-blue-500 font-bold text-sm">去記錄領券 &rarr;</button>
           </div>
 
@@ -161,11 +125,9 @@
                     共 {{ info.coupons.length }} 張
                   </span>
                 </h4>
-              <p class="text-xs font-bold text-indigo-600 bg-indigo-50 inline-block px-2 py-1 rounded-lg">
-                  同一單用晒：扣券前消費 MOP {{ info.totalRequiredSpend }}，扣券後自付 MOP {{ info.totalRequiredSpend - info.totalAmount }}
-                </p>
+
               </div>
-              
+
               <!-- 優惠券子列表 -->
               <div class="space-y-2">
                 <div v-for="coupon in info.coupons" :key="coupon.id" class="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
@@ -198,13 +160,14 @@
         <section class="space-y-3">
           <div class="flex items-center justify-between">
             <h3 class="text-base font-bold text-gray-800">商戶滿減券／禮遇券</h3>
-            <span class="text-[10px] text-gray-500">不納入政府券自動計算</span>
+
           </div>
-          <a href="https://rewards.dsedt.gov.mo/#/website/merchant/index?g=915550" target="_blank" rel="noopener noreferrer" class="inline-block text-sm font-bold text-violet-700 underline py-2">官方商戶清單及優惠詳情 ↗</a><p class="text-xs text-gray-500">可按商戶搜尋優惠；完整條款請點「查看更多」，以官方及券面資料為準。</p>
+          <a href="https://rewards.dsedt.gov.mo/#/website/merchant/index?g=915550" target="_blank" rel="noopener noreferrer" class="inline-block text-sm font-bold text-violet-700 underline py-2">官方商戶清單及優惠詳情 ↗</a>
           <div v-if="merchantOffers.length === 0" class="rounded-2xl border border-dashed border-gray-200 bg-white p-4 text-sm text-gray-500">
-            尚未記錄商戶優惠。未知條款或疊加規則不會當成可用折扣。
+            目前未有持有的商戶券。
           </div>
-          <div v-for="offer in merchantOffers" :key="offer.id" class="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm space-y-1">
+          <div v-for="group in merchantGroups" :key="group.platform" class="space-y-2"><h4 class="font-bold text-sm text-violet-800">{{ group.platform }}</h4>
+          <div v-for="offer in group.offers" :key="offer.id" class="rounded-2xl border border-violet-100 bg-white p-4 shadow-sm space-y-1">
             <div class="flex items-start justify-between gap-2">
               <div>
                 <span class="text-[10px] font-bold text-violet-700 bg-violet-50 rounded-full px-2 py-1">{{ offer.type === 'merchant_discount' ? '商戶滿減券' : '消費禮遇券' }}</span>
@@ -213,19 +176,15 @@
               <span class="text-xs font-bold" :class="offerStatus(offer).className">{{ offerStatus(offer).label }}</span>
             </div>
             <p class="text-sm text-gray-700">已用 {{ merchantCounts(offer).used }} 張 · 未用 {{ merchantCounts(offer).remaining }} 張<span v-if="offer.benefit"> · {{ offer.benefit }}</span></p>
-            <p class="text-xs text-gray-500">門檻：{{ offer.threshold ? '滿 MOP ' + offer.threshold : '依商戶條款' }} · 有效期至 {{ offer.expiryDate ? formatDate(offer.expiryDate) : '未填（請按券面確認）' }}</p>
-            <p class="text-xs text-gray-500">條款：{{ offer.terms || '尚未核實，付款前向商戶確認' }}</p>
-            <p class="text-[11px] text-amber-700">{{ offer.stackability === 'verified' ? '疊加方式已按所填條款核實' : '疊加方式未知；已排除自動最優計算' }}</p>
-            <div class="flex gap-2 pt-2">
-              <button v-if="canUseMerchant(offer)" @click="confirmMerchantRedemption(offer)" class="rounded-lg bg-violet-600 text-white px-3 py-2 text-xs">核消 1 張</button>
-            </div>
-          </div>
+            <p class="text-xs text-gray-500">有效期至 {{ offer.expiryDate ? formatDate(offer.expiryDate) : '未填' }}</p>
+
+          </div></div>
         </section>
       </div>
 
       <!-- ==================== TAB 2: 抽券 (Draw) ==================== -->
       <div v-if="activeTab === 'draw'" class="p-4 space-y-6 pb-24">
-        
+
         <!-- ⚙️ 管理平台介面 -->
         <div v-if="showSettings" class="space-y-6 animate-in slide-in-from-bottom-4 duration-300">
           <div class="flex items-center gap-3 mb-6 border-b pb-4">
@@ -237,7 +196,7 @@
             <h2 class="text-xl font-bold text-gray-800">管理支付平台</h2>
           </div>
           <p class="text-sm text-gray-600 mb-4">隱藏你沒有使用或者唔打算參與活動嘅支付平台，令介面更加簡潔。</p>
-          
+
           <div class="space-y-3">
             <div v-for="platform in ALL_PLATFORMS" :key="platform" class="flex items-center justify-between p-4 rounded-2xl border transition-colors" :class="hiddenPlatforms.includes(platform) ? 'bg-gray-50 border-gray-200' : 'bg-white border-blue-100 shadow-sm'">
               <span class="font-bold text-sm" :class="hiddenPlatforms.includes(platform) ? 'text-gray-400 line-through' : 'text-gray-800'">{{ platform }}</span>
@@ -312,7 +271,7 @@
                 管理平台
               </button>
             </div>
-            
+
             <div v-if="activePlatforms.length === 0" class="p-6 bg-gray-50 rounded-2xl text-center border border-dashed border-gray-300">
               <p class="text-gray-500 text-sm mb-3">你已隱藏所有支付平台。</p>
               <button @click="showSettings = true" class="text-blue-500 font-bold text-sm">點擊重新設定</button>
@@ -353,7 +312,7 @@
                   <button @click="handleAdd(amount)" class="w-8 h-8 rounded-full bg-pink-500 flex items-center justify-center text-white active:bg-pink-600 shadow-sm transition-colors font-bold">+</button>
                 </div>
               </div>
-              
+
               <!-- 謝謝參與 / 未有中獎選項 -->
               <div class="flex items-center justify-between p-3 bg-gray-50 border-t-2 border-dashed border-gray-200">
                 <div class="flex items-center gap-3">
@@ -376,6 +335,16 @@
             </div>
           </div>
 
+          <section class="bg-white border border-violet-100 rounded-2xl p-4 shadow-sm">
+            <h3 class="font-bold text-violet-800">商戶滿減券／消費禮遇券</h3>
+            <div class="mt-4 space-y-3">
+              <label class="block text-sm">商戶滿減券張數<input v-model="merchantForm.discountCount" aria-label="商戶滿減券張數" type="number" min="0" max="9999" step="1" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" /></label>
+              <label class="block text-sm">消費禮遇券張數<input v-model="merchantForm.giftCount" aria-label="消費禮遇券張數" type="number" min="0" max="9999" step="1" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" /></label>
+              <p class="text-xs text-gray-500">沿用上方實際領券日期，與政府金額券同一期，到下周四屆滿；補記時請先在上方選擇日期，保存前會顯示日期及期限。</p>
+              <a href="https://rewards.dsedt.gov.mo/#/website/merchant/index?g=915550" target="_blank" rel="noopener noreferrer" class="inline-block text-sm font-bold text-violet-700 underline py-2">官方商戶清單及優惠詳情 ↗</a><p class="text-xs text-gray-500">可按商戶搜尋優惠；完整條款請點「查看更多」，以官方及券面資料為準。</p>
+              <p class="text-[11px] text-amber-700">商戶券不納入政府券節省計算；各商戶優惠及疊加規則請查閱官方詳情。</p>
+            </div>
+          </section>
           <p v-if="errorMsg" class="text-red-500 text-sm text-center font-bold bg-red-50 py-2 rounded-xl border border-red-100">
             {{ errorMsg }}
           </p>
@@ -387,23 +356,13 @@
             保存記錄
           </button>
 
-          <details class="bg-white border border-violet-100 rounded-2xl p-4 shadow-sm">
-            <summary class="font-bold text-violet-800 cursor-pointer">另記抽中的商戶券／禮遇券</summary>
-            <div class="mt-4 space-y-3">
-              <label class="block text-sm">商戶滿減券張數<input v-model="merchantForm.discountCount" aria-label="商戶滿減券張數" type="number" min="0" max="9999" step="1" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" /></label>
-              <label class="block text-sm">消費禮遇券張數<input v-model="merchantForm.giftCount" aria-label="消費禮遇券張數" type="number" min="0" max="9999" step="1" class="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm" /></label>
-              <p class="text-xs text-gray-500">沿用上方實際領券日期，與政府金額券同一期，到下周四屆滿；補記時請先在上方選擇日期，保存前會顯示日期及期限。</p>
-              <a href="https://rewards.dsedt.gov.mo/#/website/merchant/index?g=915550" target="_blank" rel="noopener noreferrer" class="inline-block text-sm font-bold text-violet-700 underline py-2">官方商戶清單及優惠詳情 ↗</a><p class="text-xs text-gray-500">可按商戶搜尋優惠；完整條款請點「查看更多」，以官方及券面資料為準。</p>
-              <p class="text-[11px] text-amber-700">商戶券不納入政府券節省計算；各商戶優惠及疊加規則請查閱官方詳情。</p>
-              <p v-if="merchantError" class="text-xs font-bold text-red-600">{{ merchantError }}</p>
-              <button @click="saveMerchantOffer" class="w-full rounded-xl bg-violet-600 py-3 text-sm font-bold text-white">保存商戶優惠記錄</button>
-            </div>
-          </details>
+
         </div>
       </div>
 
       <!-- ==================== TAB 3: 核券 (Redeem) ==================== -->
       <div v-if="activeTab === 'redeem'" class="p-4 space-y-5 pb-24">
+        <p class="text-xs text-gray-600">此處只記錄已使用；實際用券請到原 App，按券面及商戶指示操作。不同券能否同時使用，以券面條款為準。</p>
         <div class="bg-gradient-to-r from-blue-500 to-cyan-400 p-5 rounded-3xl text-white shadow-md relative overflow-hidden">
           <h2 class="text-xl font-bold flex items-center gap-2 relative z-10">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -556,15 +515,25 @@
           </div>
         </div>
 
+        <section class="space-y-3">
+          <h3 class="font-bold text-gray-800 text-sm">商戶滿減券／消費禮遇券</h3>
+          <div v-for="group in merchantGroups" :key="group.platform" class="space-y-2"><h4 class="font-bold text-sm text-violet-800">{{ group.platform }}</h4>
+          <div v-for="offer in group.offers" :key="offer.id" class="bg-white rounded-2xl border border-violet-100 p-4">
+            <p class="font-bold text-sm">{{ offer.type === 'merchant_discount' ? '商戶滿減券' : '消費禮遇券' }} · 未用 {{ merchantCounts(offer).remaining }} 張</p>
+            <p class="text-xs text-gray-500 mt-1">有效期至 {{ offer.expiryDate ? formatDate(offer.expiryDate) : '未填' }} · {{ offerStatus(offer).label }}</p>
+            <button v-if="canUseMerchant(offer)" @click="toggleCouponSelection(offer.id)" :aria-pressed="selectedCouponIds.includes(offer.id)" class="mt-2 rounded-lg bg-blue-600 text-white px-3 py-2 text-xs">{{ selectedCouponIds.includes(offer.id) ? '已選 1 張 ✓' : '選取 1 張' }}</button>
+          </div></div>
+        </section>
+
         <!-- 已選摘要 + 消費金額 -->
         <div v-if="selectedCouponIds.length > 0" class="space-y-3 bg-blue-50 border border-blue-100 rounded-2xl p-4">
           <div class="flex items-center justify-between">
             <span class="text-sm font-bold text-blue-800">已選 {{ selectedCouponIds.length }} 張優惠券</span>
             <button @click="selectedCouponIds = []" class="text-[10px] text-gray-400 underline">清除選擇</button>
           </div>
-          <p class="text-xs text-blue-700">扣政府券前合資格消費: <span class="font-bold">${{ totalSelectedRequired }}</span>（金額選填）</p>
+          <p v-if="selectedGovernment.length" class="text-xs text-blue-700">扣政府券前合資格消費: <span class="font-bold">${{ totalSelectedRequired }}</span>（金額選填）</p>
 
-          <div class="relative">
+          <div v-if="selectedGovernment.length" class="relative">
             <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">$</span>
             <input
               type="number"
@@ -594,12 +563,50 @@
 
         <button
           @click="handlePreRedeem"
-          :disabled="selectedCouponIds.length === 0 || (spendAmount && !isEligible)"
+          :disabled="selectedCouponIds.length === 0 || (!!spendAmount && !isEligible)"
           class="w-full font-bold text-lg py-4 rounded-2xl shadow-lg transition-all"
           :class="selectedCouponIds.length > 0 && (!spendAmount || isEligible) ? 'bg-blue-600 text-white active:scale-[0.98]' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
         >
           確認核銷{{ selectedCouponIds.length > 1 ? ' ' + selectedCouponIds.length + ' 張' : '' }}
         </button>
+        <details class="bg-white rounded-2xl p-3"><summary class="text-sm font-bold">政府券用券方案</summary>
+        <!-- 純規劃：不會自動核銷或改動記錄 -->
+        <section v-if="usagePlans.options.length" class="bg-white border border-emerald-100 rounded-3xl p-4 shadow-sm space-y-4">
+          <div>
+            <p class="text-xs font-bold text-emerald-700">用完現有政府券</p>
+            <div class="grid grid-cols-2 gap-3 mt-2">
+              <div class="rounded-2xl bg-emerald-50 p-3">
+                <p class="text-[11px] text-emerald-700">扣政府券前合資格消費</p>
+                <p class="text-xl font-black text-emerald-900">MOP {{ usagePlans.totals.requiredSpend }}</p>
+              </div>
+              <div class="rounded-2xl bg-blue-50 p-3">
+                <p class="text-[11px] text-blue-700">扣券後自付合計</p>
+                <p class="text-xl font-black text-blue-900">MOP {{ usagePlans.totals.outOfPocket }}</p>
+              </div>
+            </div>
+            <p class="text-[11px] text-gray-500 mt-2">只為用券而增加消費未必划算；請按原有需要選方案。不同錢包不可合併核銷。</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button v-for="option in usagePlans.options" :key="option.id" @click="selectedPlanId = option.id"
+              class="flex-1 rounded-xl px-2 py-2 text-xs font-bold"
+              :class="selectedPlanId === option.id ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'">
+              {{ option.title }}（{{ option.transactionCount }} 次）
+            </button>
+          </div>
+          <div v-if="selectedUsagePlan" class="space-y-2">
+            <div v-for="(transaction, index) in selectedUsagePlan.transactions" :key="transaction.wallet + '-' + index" class="rounded-2xl border border-gray-100 bg-gray-50 p-3">
+              <div class="flex justify-between gap-2">
+                <p class="text-sm font-bold text-gray-800">第 {{ index + 1 }} 次 · {{ transaction.wallet }}</p>
+                <span class="text-xs font-bold text-emerald-700">實付 ${{ transaction.outOfPocket }}</span>
+              </div>
+              <p class="text-xs text-gray-600 mt-1">消費 ${{ transaction.requiredSpend }}；用券 {{ transaction.coupons.map(c => '$' + c.amount).join(' + ') }}；扣減 ${{ transaction.faceValue }}</p>
+            </div>
+            <p v-if="selectedUsagePlan.id === 'one-by-one'" class="text-[11px] text-amber-700 bg-amber-50 rounded-xl p-2">這是分次購物方案；若同一次購物要拆單，須先詢問商戶是否接受。</p>
+          </div>
+        </section>
+
+        </details>
       </div>
 
       <!-- ==================== TAB 4: 記錄 (History) ==================== -->
@@ -615,7 +622,7 @@
             </svg>
             <span class="text-[10px] font-bold">匯出記錄</span>
           </button>
-          
+
           <label class="flex-1 flex flex-col items-center justify-center gap-1 py-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 transition-colors cursor-pointer">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
@@ -644,7 +651,7 @@
             操作歷史
           </h2>
         </div>
-        
+
         <div v-if="logs.length === 0" class="text-center text-gray-500 mt-10 space-y-2">
           <p>暫時未有任何記錄</p>
           <p class="text-xs">註：資料會安全儲存喺你嘅設備中，不會上傳。</p>
@@ -652,7 +659,7 @@
 
         <div v-else class="space-y-4 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-gray-200 before:to-transparent">
           <div v-for="log in logs" :key="log.id" class="relative flex items-center justify-between group">
-            
+
             <div class="flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shrink-0 shadow-sm"
                  :class="log.type === 'expired' ? 'bg-red-400' : (log.type === 'draw' && log.desc.includes('未有中獎')) ? 'bg-gray-400' : log.type === 'draw' ? 'bg-pink-400' : 'bg-blue-400'">
               <svg v-if="log.type === 'expired'" class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -668,14 +675,14 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
               </svg>
             </div>
-            
+
             <div class="w-[calc(100%-4rem)] bg-white p-4 rounded-2xl border shadow-sm" :class="log.type === 'expired' ? 'border-red-100' : 'border-gray-100'">
               <div class="flex items-center justify-between mb-1">
                 <span class="text-xs font-bold px-2 py-1 rounded-md"
                       :class="log.type === 'expired' ? 'bg-red-50 text-red-600' : (log.type === 'draw' && log.desc.includes('未有中獎')) ? 'bg-gray-100 text-gray-600' : log.type === 'draw' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600'">
                   {{ log.type === 'expired' ? '已過期' : log.type === 'draw' ? '抽券' : '核銷' }}
                 </span>
-                <time class="text-[10px] text-gray-400">{{ log.couponType ? new Date(log.date).toLocaleString('zh-HK', { timeZone: 'Asia/Macau', hour12: false }) : formatDate(log.type === 'draw' && log.drawDate ? log.drawDate : log.date) }}</time>
+                <time class="text-[10px] text-gray-400">{{ log.type === 'redeem' ? new Date(log.date).toLocaleString('zh-HK', { timeZone: 'Asia/Macau', hour12: false }) : formatDate(log.type === 'draw' && log.drawDate ? log.drawDate : log.date) }}</time>
               </div>
               <p class="text-sm font-medium mt-2 leading-relaxed" :class="log.type === 'expired' ? 'text-red-700' : 'text-gray-700'">
                 {{ log.desc }}
@@ -716,7 +723,7 @@
             </svg>
             <h3 class="font-bold text-gray-800">玩法簡介</h3>
           </div>
-          
+
           <div class="bg-pink-50 rounded-xl p-4 border border-pink-100">
             <h4 class="font-bold text-pink-800 flex items-center gap-2 mb-2">
               <span class="bg-pink-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-mono">1</span>
@@ -774,7 +781,7 @@
               </svg>
             </a>
           </div>
-          
+
           <!-- 設計師鳴謝 -->
           <div class="mt-6 pt-4 border-t border-gray-100 text-center">
             <p class="text-xs text-gray-400">活動合辦：澳門特區政府、澳門中華總商會；本站為非官方記錄工具</p>
@@ -892,7 +899,7 @@
     const STORAGE_KEY_LOGS = 'macau_logs_2026_autumn';
     const STORAGE_KEY_HIDDEN_PLATFORMS = 'macau_hidden_platforms_2026_autumn';
     const STORAGE_KEY_REMINDER = 'lastRemindedHour_2026_autumn';
-    
+
     const ALL_PLATFORMS = [
       'MPay 澳門通', 'BOC 中銀', 'Tai Fung 大豐', 'ICBC 工銀', 
       'Luso 國際銀行', 'CGB 廣發', 'ANT BANK 支付寶', 'UePay 極易付'
@@ -942,7 +949,7 @@
         const suggestMode = ref('single');
         const suggestPlan = ref([]);
         const selectedPlanId = ref('by-wallet');
-        const merchantError = ref('');
+
         const merchantForm = ref({ discountCount: 0, giftCount: 0 });
 
         // 載入 localStorage 資料 (高度防禦性解析)
@@ -1036,10 +1043,19 @@
         const merchantOffers = computed(() => coupons.value.filter(c =>
           c && [CouponCore.MERCHANT_DISCOUNT, CouponCore.MERCHANT_GIFT].includes(CouponCore.getCouponType(c)) && CouponCore.getCouponStatus(c) !== 'used'
         ));
+        const merchantGroups = computed(() => {
+          const grouped = new Map();
+          merchantOffers.value.forEach(offer => {
+            const platform = offer.platform || '未指定 App';
+            if (!grouped.has(platform)) grouped.set(platform, []);
+            grouped.get(platform).push(offer);
+          });
+          return [...grouped].map(([platform, offers]) => ({ platform, offers }));
+        });
         const usagePlans = computed(() => CouponCore.buildUsagePlans(coupons.value));
         const selectedUsagePlan = computed(() => usagePlans.value.options.find(option => option.id === selectedPlanId.value) || usagePlans.value.options[0] || null);
         const totalValue = computed(() => activeCoupons.value.reduce((sum, c) => sum + (c.amount || 0), 0));
-        
+
         const totalDrawSelectedCount = computed(() => Object.values(drawCounts.value).reduce((a, b) => a + b, 0));
 
         // 按總金額及面額大小進行精準排序
@@ -1109,8 +1125,9 @@
           return activePlatforms.value.filter(p => !used.has(p));
         });
 
-        const selectedCoupons = computed(() => activeCoupons.value.filter(c => selectedCouponIds.value.includes(c.id)));
-        const totalSelectedRequired = computed(() => selectedCoupons.value.reduce((sum, c) => sum + c.amount * 3, 0));
+        const selectedCoupons = computed(() => coupons.value.filter(c => c && CouponCore.getCouponStatus(c) === 'active' && selectedCouponIds.value.includes(c.id)));
+        const selectedGovernment = computed(() => selectedCoupons.value.filter(c => CouponCore.getCouponType(c) === CouponCore.GOVERNMENT_COUPON));
+        const totalSelectedRequired = computed(() => selectedGovernment.value.reduce((sum, c) => sum + c.amount * 3, 0));
         const isEligible = computed(() => {
           if (selectedCouponIds.value.length === 0) return false;
           if (!spendAmount.value) return true;
@@ -1155,57 +1172,10 @@
         };
 
         const merchantCounts = CouponCore.getMerchantCounts;
-        const confirmMerchantRedemption = (offer) => {
-          const entryId = 'merchant-redeem-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-          const label = offer.type === CouponCore.MERCHANT_DISCOUNT ? '商戶滿減券' : '消費禮遇券';
-          const dialog = {
-            title: '確認核消' + label + ' 1 張？',
-            content: '確認後扣除 1 張，並保存至使用紀錄。',
-            isDestructive: false,
-            onConfirm: () => {
-              if (confirmDialog.value !== dialogProxy) return;
-              confirmDialog.value = null;
-              const result = CouponCore.commitMerchantRedemption({ coupons: coupons.value, logs: logs.value, couponId: offer.id, entryId });
-              if (!result.added) return;
-              coupons.value = result.coupons;
-              logs.value = result.logs;
-              activeTab.value = 'history';
-            }
-          };
-          confirmDialog.value = dialog;
-          const dialogProxy = confirmDialog.value;
-        };
-        const saveMerchantOffer = () => {
-          try {
-            const now = new Date();
-            const temporal = CouponCore.getMacauTemporalState(now);
-            const drawDateKey = temporal.isDrawDay ? temporal.dateKey : selectedDrawDate.value;
-            const counts = [Number(merchantForm.value.discountCount), Number(merchantForm.value.giftCount)];
-            if (counts.some(n => !Number.isSafeInteger(n) || n < 0 || n > 9999) || counts.every(n => n === 0)) throw new Error('請選擇至少 1 張；每類張數須為 0 至 9999 的整數。');
-            const types = [CouponCore.MERCHANT_DISCOUNT, CouponCore.MERCHANT_GIFT];
-            const offers = counts.flatMap((quantity, i) => quantity ? [CouponCore.createMerchantBatch({ type: types[i], quantity, drawDateKey, now, id: 'merchant-' + Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2) })] : []);
-            merchantError.value = '';
-            confirmDialog.value = {
-              title: temporal.isDrawDay ? '確認新增商戶券記錄？' : '再次確認補登商戶券？',
-              content: (temporal.isDrawDay ? '' : '⚠️ 非領券日補登，只更新個人記錄。\n\n') + '實際領券日期：' + drawDateKey + '\n所屬期數：' + CouponCore.getDrawPeriodStart(drawDateKey) + ' 起\n券到期日：' + CouponCore.getMacauDateKey(new Date(offers[0].expiryDate)) + '（澳門時間）\n\n商戶滿減券：' + counts[0] + ' 張\n消費禮遇券：' + counts[1] + ' 張',
-              isDestructive: false,
-              onConfirm: () => {
-                if (!offers.some(offer => coupons.value.some(c => c && c.id === offer.id))) {
-                  coupons.value = [...coupons.value, ...offers];
-                  addLog('merchant-offer', '領券日期 ' + drawDateKey + '：商戶滿減券 ' + counts[0] + ' 張、消費禮遇券 ' + counts[1] + ' 張');
-                }
-                merchantForm.value = { discountCount: 0, giftCount: 0 };
-                confirmDialog.value = null;
-                activeTab.value = 'home';
-              }
-            };
-          } catch (error) { merchantError.value = error.message; }
-        };
-
         const handlePreSave = () => {
           const now = new Date();
           if (!selectedPlatform.value) return errorMsg.value = '請先選擇承辦單位！';
-          if (totalDrawSelectedCount.value === 0 && noWinCount.value === 0) {
+          if (totalDrawSelectedCount.value === 0 && noWinCount.value === 0 && Number(merchantForm.value.discountCount) === 0 && Number(merchantForm.value.giftCount) === 0) {
             return errorMsg.value = '請記錄至少一張優惠券或未有中獎次數！';
           }
           if (totalDrawSelectedCount.value + noWinCount.value > 3) {
@@ -1217,7 +1187,11 @@
           if (dateError) return errorMsg.value = dateError;
           errorMsg.value = '';
 
+          const merchantCounts = { discountCount: Number(merchantForm.value.discountCount), giftCount: Number(merchantForm.value.giftCount) };
+          if (Object.values(merchantCounts).some(n => !Number.isSafeInteger(n) || n < 0 || n > 9999)) return errorMsg.value = '商戶券張數須為 0 至 9999 的整數。';
           let summaryDesc = [];
+          if (merchantCounts.discountCount) summaryDesc.push(merchantCounts.discountCount + '張商戶滿減券');
+          if (merchantCounts.giftCount) summaryDesc.push(merchantCounts.giftCount + '張消費禮遇券');
           if (totalDrawSelectedCount.value > 0) {
             DENOMINATIONS.forEach(amount => {
               if (drawCounts.value[amount] > 0) summaryDesc.push(`${drawCounts.value[amount]}張 $${amount}`);
@@ -1239,19 +1213,20 @@
             content: `${backfillWarning}實際領券日期：${drawDateKey}\n所屬期數：${periodStart} 起\n券到期日：${expiryDate}（澳門時間）\n\n你選擇咗「${selectedPlatform.value}」，共記錄：\n${summaryDesc.join('、')}\n\n請核對日期、期數及資料無誤後再確認。`,
             isDestructive: false,
             onConfirm: () => {
-              if (handleSave(drawDateKey, drawTime, entryId, totalDrawSelectedCount.value > 0)) {
+              if (handleSave(drawDateKey, drawTime, entryId, totalDrawSelectedCount.value > 0 || merchantCounts.discountCount > 0 || merchantCounts.giftCount > 0, merchantCounts)) {
                 confirmDialog.value = null;
               }
             }
           };
         };
 
-        const handleSave = (drawDateKey, drawTime, entryId, hasTickets) => {
+        const handleSave = (drawDateKey, drawTime, entryId, hasTickets, merchantCounts) => {
           const result = CouponCore.commitDrawEntry({
             coupons: coupons.value,
             logs: logs.value,
             platform: selectedPlatform.value,
             drawCounts: drawCounts.value,
+            merchantCounts,
             noWinCount: noWinCount.value,
             drawDateKey,
             recordedAt: new Date(),
@@ -1261,11 +1236,12 @@
           if (!result.added) return false;
           coupons.value = result.coupons;
           logs.value = result.logs;
-          
+
           selectedPlatform.value = '';
           drawCounts.value = { 10: 0, 20: 0, 50: 0, 100: 0, 200: 0 };
           noWinCount.value = 0;
-          
+          merchantForm.value = { discountCount: 0, giftCount: 0 };
+
           if (hasTickets) {
             activeTab.value = 'home';
           } else {
@@ -1289,59 +1265,32 @@
         };
 
         const handlePreRedeem = () => {
-          if (selectedCouponIds.value.length === 0) return redeemErrorMsg.value = '請選擇要核銷嘅優惠券！';
-          const selectedPlatforms = [...new Set(selectedCoupons.value.map(c => c.platform))];
-          if (selectedPlatforms.length !== 1) return redeemErrorMsg.value = '不同錢包不可合併核銷；請每次只選一個錢包。';
-          const walletCoupons = activeCoupons.value
-            .filter(c => c.platform === selectedPlatforms[0])
-            .sort((a, b) => b.amount - a.amount);
-          const requiredPrefixIds = new Set(walletCoupons.slice(0, selectedCoupons.value.length).map(c => c.id));
-          if (selectedCoupons.value.some(c => !requiredPrefixIds.has(c.id))) {
-            return redeemErrorMsg.value = '同一錢包必須先用較高面額券；請由最大面額開始選。';
-          }
-          if (spendAmount.value && !isEligible.value) return redeemErrorMsg.value = `消費金額不足！所選優惠券共需消費滿 $${totalSelectedRequired.value}。`;
+          if (!selectedCoupons.value.length) return redeemErrorMsg.value = '請選擇要核銷嘅優惠券！';
+          const government = selectedGovernment.value;
+          const platforms = [...new Set(government.map(c => c.platform))];
+          if (platforms.length > 1) return redeemErrorMsg.value = '政府券請每次只選一個錢包。';
+          const ordered = activeCoupons.value.filter(c => c.platform === platforms[0]).sort((a,b) => b.amount-a.amount);
+          const prefix = new Set(ordered.slice(0,government.length).map(c=>c.id));
+          if (government.some(c=>!prefix.has(c.id))) return redeemErrorMsg.value = '同一錢包必須先用較高面額券；請由最大面額開始選。';
+          if (spendAmount.value && !isEligible.value) return redeemErrorMsg.value = '政府券消費金額不足。';
           redeemErrorMsg.value = '';
-
-          const grouped = {};
-          selectedCoupons.value.forEach(c => {
-            if (!grouped[c.platform]) grouped[c.platform] = [];
-            grouped[c.platform].push(c);
-          });
-          const platformSummary = Object.entries(grouped)
-            .map(([p, cs]) => `${p}: ${cs.map(c => `$${c.amount}`).join('+')}`)
-            .join('\n');
-
+          const ids = selectedCoupons.value.map(c=>c.id);
+          const entryId = 'redeem-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+          const summary = selectedCoupons.value.map(c => (c.platform || '未指定 App') + '：' +
+            (CouponCore.getCouponType(c) === CouponCore.GOVERNMENT_COUPON ? '政府券 $' + c.amount : c.type === CouponCore.MERCHANT_DISCOUNT ? '商戶滿減券' : '消費禮遇券') + ' 1 張').join('\n');
           confirmDialog.value = {
-            title: `確認核銷 ${selectedCouponIds.value.length} 張優惠券？`,
-            content: `${platformSummary}${spendAmount.value ? '\n\n消費金額：$' + spendAmount.value : ''}\n\n請確認已成功付款並核銷。`,
-            isDestructive: false,
+            title: '確認核銷 ' + ids.length + ' 張優惠券？',
+            content: summary + '\n\n確認後扣除所選張數並保存使用紀錄。', isDestructive: false,
             onConfirm: () => {
-              handleRedeem();
+              if (confirmDialog.value !== dialog) return;
               confirmDialog.value = null;
+              const result = CouponCore.commitRedemption({ coupons: coupons.value, logs: logs.value, couponIds: ids, entryId });
+              if (!result.added) { redeemErrorMsg.value = '券狀態已改變，請重新選擇。'; return; }
+              coupons.value = result.coupons; logs.value = result.logs;
+              selectedCouponIds.value = []; spendAmount.value = ''; activeTab.value = 'history';
             }
           };
-        };
-
-        const handleRedeem = () => {
-          const ids = selectedCouponIds.value;
-          const now = new Date().toISOString();
-          const redeemed = selectedCoupons.value;
-          coupons.value = coupons.value.map(c =>
-            ids.includes(c.id) ? { ...c, status: 'used', usedDate: now } : c
-          );
-
-          const grouped = {};
-          redeemed.forEach(c => {
-            if (!grouped[c.platform]) grouped[c.platform] = [];
-            grouped[c.platform].push(c);
-          });
-          Object.entries(grouped).forEach(([p, cs]) => {
-            addLog('redeem', `核銷 ${cs.map(c => `$${c.amount}`).join('+')} 券 (${p})${spendAmount.value ? ' - 消費 $' + spendAmount.value : ''}`);
-          });
-
-          selectedCouponIds.value = [];
-          spendAmount.value = '';
-          activeTab.value = 'home';
+          const dialog = confirmDialog.value;
         };
 
         // 智能建議計算
@@ -1497,7 +1446,7 @@
             hiddenPlatforms: hiddenPlatforms.value,
             exportDate: new Date().toISOString()
           };
-          
+
           const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
@@ -1517,7 +1466,7 @@
           reader.onload = (event) => {
             try {
               const importedData = JSON.parse(event.target.result);
-              
+
               if (!importedData || !importedData.coupons || !importedData.logs) {
                 alert('檔案格式錯誤，無法讀取資料！');
                 return;
@@ -1584,15 +1533,17 @@
           selectedPlanId,
           canUseMerchant: offer => CouponCore.getCouponStatus(offer) === 'active' && CouponCore.getMerchantCounts(offer).remaining > 0,
           merchantCounts,
-          confirmMerchantRedemption,
+
           merchantForm,
-          merchantError,
+
           ALL_PLATFORMS,
           DENOMINATIONS,
           CAMPAIGN_START: CouponCore.CAMPAIGN_START,
           activePlatforms,
           activeCoupons,
           merchantOffers,
+          merchantGroups,
+          selectedGovernment,
           usagePlans,
           selectedUsagePlan,
           totalValue,
@@ -1615,7 +1566,7 @@
           goToRedeem,
           handlePreRedeem,
           handleBatchRedeem,
-          saveMerchantOffer,
+
           offerStatus,
           dismissUrgentAlert,
           handleExportData,
