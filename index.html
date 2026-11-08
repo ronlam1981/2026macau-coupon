@@ -472,6 +472,8 @@
             </button>
           </div>
 
+          <p class="text-xs text-gray-500 px-1">任何面額都可以選；排序只影響顯示，不限制記錄先後。</p>
+
           <div v-if="activeCoupons.length === 0" class="bg-gray-50 rounded-2xl p-6 text-center text-gray-500 border border-gray-200">
             無可用嘅優惠券
           </div>
@@ -737,7 +739,7 @@
               <span class="bg-blue-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-mono">2</span>
               領券當日至下周四 核券
             </h4>
-            <p class="text-sm text-blue-700">政府電子優惠面額為10、20、50、100及200元；扣政府券前的合資格消費須達券面值的3倍，扣券後自付為券面值的2倍。同一錢包按大面額優先，多張券符合條件時可於同一交易自動核銷；未使用的券下周五凌晨清零。</p>
+            <p class="text-sm text-blue-700">政府電子優惠面額為10、20、50、100及200元；扣政府券前的合資格消費須達券面值的3倍，扣券後自付為券面值的2倍。本工具可自行選擇要記錄的券，不限制面額先後；實際用券按原 App、券面及商戶指示操作。未使用的券下周五凌晨清零。</p>
           </div>
           <div class="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
             <h4 class="font-bold text-emerald-800 mb-2">新增兩類商戶優惠</h4>
@@ -1269,9 +1271,6 @@
           const government = selectedGovernment.value;
           const platforms = [...new Set(government.map(c => c.platform))];
           if (platforms.length > 1) return redeemErrorMsg.value = '政府券請每次只選一個錢包。';
-          const ordered = activeCoupons.value.filter(c => c.platform === platforms[0]).sort((a,b) => b.amount-a.amount);
-          const prefix = new Set(ordered.slice(0,government.length).map(c=>c.id));
-          if (government.some(c=>!prefix.has(c.id))) return redeemErrorMsg.value = '同一錢包必須先用較高面額券；請由最大面額開始選。';
           if (spendAmount.value && !isEligible.value) return redeemErrorMsg.value = '政府券消費金額不足。';
           redeemErrorMsg.value = '';
           const ids = selectedCoupons.value.map(c=>c.id);
@@ -1307,7 +1306,7 @@
             if (!groupMap[c.platform]) groupMap[c.platform] = [];
             groupMap[c.platform].push(c);
           }
-          // Sort coupons within each platform DESC by amount (greedy)
+          // Larger coupons are a suggestion preference, not a required usage order.
           const pfGroups = Object.entries(groupMap).map(([platform, coupons]) => {
             const sorted = [...coupons].sort((a, b) => b.amount - a.amount);
             const totalRequired = sorted.reduce((s, c) => s + c.amount * 3, 0);
@@ -1323,7 +1322,7 @@
               for (const c of pf.coupons) {
                 const req = c.amount * 3;
                 if (rem >= req) { rem -= req; sel.push(c); }
-                else break;
+                // A larger coupon that does not fit must not block smaller coupons.
               }
               const saving = sel.reduce((s, c) => s + c.amount, 0);
               if (saving > bestSaving) {
@@ -1340,7 +1339,7 @@
             for (const pf of pfGroups) {
               for (const c of pf.coupons) {
                 const req = c.amount * 3;
-                if (rem < req) break;
+                if (rem < req) continue;
                 rem -= req;
                 if (!selectedByPlatform[pf.platform]) selectedByPlatform[pf.platform] = [];
                 selectedByPlatform[pf.platform].push(c);
@@ -1579,3 +1578,4 @@
   </script>
 </body>
 </html>
+

@@ -22,7 +22,7 @@
     check('total required spend is face value × 3', plan.totals.requiredSpend === 240);
     check('total out-of-pocket is face value × 2', plan.totals.outOfPocket === 160);
     check('wallets remain separate', plan.options[0].transactionCount === 2);
-    check('larger denomination is first', plan.options[0].transactions[0].coupons.map(c => c.amount).join(',') === '50,10');
+    check('larger denomination is displayed first', plan.options[0].transactions[0].coupons.map(c => c.amount).join(',') === '50,10');
     check('one-by-one option has one transaction per coupon', plan.options[1].transactionCount === 3);
     check('unknown merchant stacking is excluded', CouponCore.isMerchantOfferEligibleForAutoPlan({ type: 'merchant_discount', status: 'active', termsVerified: false, stackability: 'unknown' }) === false);
     const thursday = CouponCore.getMacauTemporalState(new Date('2026-10-15T15:59:59.999Z'));
@@ -46,3 +46,4 @@
   </script>
 </body>
 </html>
+

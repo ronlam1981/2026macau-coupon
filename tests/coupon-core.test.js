@@ -94,7 +94,7 @@ test('Friday coupon expires at the end of the following Macau Thursday', () => {
   assert.equal(core.getExpiryISOString('2026-10-16'), '2026-10-22T15:59:59.999Z');
 });
 
-test('usage plans keep wallets separate, use larger coupons first and show spend and self-pay', () => {
+test('usage plans keep wallets separate, display larger coupons first and show spend and self-pay', () => {
   const coupons = [
     { id: 'a10', amount: 10, platform: 'Wallet A', status: 'active' },
     { id: 'b20', amount: 20, platform: 'Wallet B', status: 'active' },
@@ -280,3 +280,4 @@ test('unified redemption rejects stale or expired selections atomically at Macau
   assert.strictEqual(expired.coupons,coupons);
   assert.equal(core.commitRedemption({...args,couponIds:['a','missing'],now:new Date('2026-10-21T04:00:00Z')}).added,false);
 });
+
