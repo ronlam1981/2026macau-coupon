@@ -423,7 +423,8 @@
                 </div>
                 <span class="text-emerald-600 font-bold text-sm">節省 ${{ plan.savingAmount }}</span>
               </div>
-              <p class="text-[11px] text-gray-500">扣券前消費 <span class="font-bold text-gray-700">${{ plan.requiredSpend }}</span> · 扣券後自付 <span class="font-bold text-gray-700">${{ plan.requiredSpend - plan.savingAmount }}</span></p>
+              <p class="text-[11px] text-gray-500">用券最低消費門檻 <span class="font-bold text-gray-700">${{ plan.requiredSpend }}</span></p>
+              <p v-if="suggestMode === 'split'" class="text-[11px] text-gray-500">此分單按最低門檻計算自付 <span class="font-bold text-gray-700">${{ plan.requiredSpend - plan.savingAmount }}</span>（未包括下方未分配餘額）</p>
               <div class="flex flex-wrap gap-1.5">
                 <span
                   v-for="c in plan.coupons"
@@ -435,14 +436,22 @@
 
             <div class="bg-gray-50 rounded-2xl p-3 flex items-center justify-between">
               <div class="text-xs text-gray-600 space-y-0.5">
-                <p>消費分配: <span class="font-bold text-gray-800">${{ totalSuggestUsedSpend }}</span> / ${{ suggestSpend }}</p>
-                <p>合共節省: <span class="font-bold text-emerald-600">${{ totalSuggestSaving }}</span></p>
+                <p>輸入扣券前消費: <span class="font-bold text-gray-800">${{ suggestSpend }}</span></p>
+                <template v-if="suggestMode === 'split'">
+                  <p>已分配最低消費: <span class="font-bold text-gray-800">${{ totalSuggestUsedSpend }}</span></p>
+                  <p>未分配餘額: <span class="font-bold text-amber-700">${{ totalSuggestUnallocatedSpend }}</span></p>
+                </template>
+                <p>政府券合共節省: <span class="font-bold text-emerald-600">${{ totalSuggestSaving }}</span></p>
+                <p>按輸入總額預計自付: <span class="font-bold text-gray-800">${{ totalSuggestOutOfPocket }}</span></p>
+                <p v-if="suggestMode === 'split'" class="text-[10px] text-gray-500">合共自付已包括未分配餘額。</p>
               </div>
               <button
                 @click="handleBatchRedeem"
                 class="bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl active:bg-emerald-600 shadow-sm transition-colors"
               >套用方案（不會核銷）</button>
             </div>
+            <p class="text-[11px] text-gray-500">預計自付＝輸入扣券前消費－政府券節省，未計其他折扣。最低消費門檻不代表你的實際交易金額。</p>
+            <p v-if="suggestMode === 'split'" class="text-[11px] text-amber-700">分單金額按各錢包最低門檻分配；請另行安排未分配餘額，並先確認商戶接受分單。</p>
           </div>
         </div>
 
@@ -1138,6 +1147,9 @@
 
         const totalSuggestSaving = computed(() => suggestPlan.value.reduce((sum, p) => sum + p.savingAmount, 0));
         const totalSuggestUsedSpend = computed(() => suggestPlan.value.reduce((sum, p) => sum + p.requiredSpend, 0));
+        // requiredSpend is a coupon threshold, not the user's actual transaction amount.
+        const totalSuggestUnallocatedSpend = computed(() => Math.round(Math.max(0, Number(suggestSpend.value) - totalSuggestUsedSpend.value) * 100) / 100);
+        const totalSuggestOutOfPocket = computed(() => Math.round(Math.max(0, Number(suggestSpend.value) - totalSuggestSaving.value) * 100) / 100);
 
         // 方法及操作
         const toggleSortOrder = () => {
@@ -1556,6 +1568,8 @@
           isEligible,
           totalSuggestSaving,
           totalSuggestUsedSpend,
+          totalSuggestUnallocatedSpend,
+          totalSuggestOutOfPocket,
           toggleSortOrder,
           togglePlatform,
           toggleCouponSelection,

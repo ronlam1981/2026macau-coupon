@@ -150,3 +150,56 @@ test('the help text no longer claims a mandatory denomination order', () => {
   assert.doesNotMatch(html, /同一錢包必須先用較高面額券|請由最大面額開始選|同一錢包按大面額優先/);
   assert.match(html, /任何面額都可以選/);
 });
+
+test('88-dollar example distinguishes threshold 60 from actual-input self-pay 68', () => {
+  for (const mode of ['single', 'split']) {
+    const app = setup();
+    app.coupons.value = [
+      {id:'fake-ten-1', amount:10, platform:'Test Wallet', status:'active'},
+      {id:'fake-ten-2', amount:10, platform:'Test Wallet', status:'active'}
+    ];
+    app.suggestSpend.value = '88';
+    app.suggestMode.value = mode;
+    const before = JSON.stringify(app.coupons.value);
+    app.refreshSuggestions();
+    assert.equal(app.suggestPlan.value[0].coupons.length, 2);
+    assert.equal(app.totalSuggestSaving.value, 20);
+    assert.equal(app.totalSuggestUsedSpend.value, 60);
+    assert.equal(app.totalSuggestUnallocatedSpend.value, 28);
+    assert.equal(app.totalSuggestOutOfPocket.value, 68);
+    assert.equal(JSON.stringify(app.coupons.value), before);
+    assert.equal(app.logs.value.length, 0);
+  }
+});
+
+test('actual-input totals handle exact thresholds, decimal spend, and split-wallet remainder', () => {
+  const app = setup();
+  app.coupons.value = [
+    {id:'test-a', amount:10, platform:'Test Wallet A', status:'active'},
+    {id:'test-b', amount:10, platform:'Test Wallet B', status:'active'}
+  ];
+  app.suggestMode.value = 'split';
+  for (const [input, expectedSelfPay, expectedRemainder] of [['60',40,0], ['88.80',68.8,28.8], ['100',80,40]]) {
+    app.suggestSpend.value = input;
+    app.refreshSuggestions();
+    assert.equal(app.suggestPlan.value.length, 2);
+    assert.equal(app.totalSuggestUsedSpend.value, 60);
+    assert.equal(app.totalSuggestOutOfPocket.value, expectedSelfPay);
+    assert.equal(app.totalSuggestUnallocatedSpend.value, expectedRemainder);
+    assert.equal(app.totalSuggestOutOfPocket.value, app.totalSuggestUsedSpend.value - app.totalSuggestSaving.value + app.totalSuggestUnallocatedSpend.value);
+  }
+  app.suggestMode.value = 'single';
+  app.refreshSuggestions();
+  assert.equal(app.suggestPlan.value.length, 1);
+  assert.equal(app.totalSuggestSaving.value, 10);
+  assert.equal(app.totalSuggestOutOfPocket.value, 90);
+});
+
+test('suggestion copy distinguishes minimum threshold, actual input, and unallocated split balance', () => {
+  assert.match(html, /用券最低消費門檻/);
+  assert.match(html, /輸入扣券前消費:/);
+  assert.match(html, /按輸入總額預計自付:/);
+  assert.match(html, /未分配餘額:/);
+  assert.match(html, /未計其他折扣/);
+  assert.doesNotMatch(html, /扣券前消費 <span[^>]*>\$\{\{ plan\.requiredSpend \}\}/);
+});
